@@ -1,0 +1,52 @@
+body {
+  max-width: 60em;
+  margin:0 auto;
+}
+
+pre.example {
+  text-align:left;
+  border: 1pt solid #A0A0A0;
+  background-color: #F0F0F0;
+  padding: 1ch;
+  display: block;
+  clear: right;
+}
+
+div.note {
+  border: 1pt solid #A0A0A0;
+  padding: 1ch;
+  display: block;
+}
+
+p {
+  margin-left: auto;
+  margin-right: auto;
+}
+
+pre {
+    border: 1pt solid #AEBDCC;
+    background-color: #F3F5F7;
+    padding: 5pt;
+    font-family: monospace;
+    font-size: small;
+    overflow:auto;
+}
+
+.diff {
+    background-color: #c0ffc0;
+}
+
+h1 {
+    font-size: x-large;
+}
+
+h2 {
+    font-size: large;
+}
+
+html { font-family: serif; 
+}
+
+a:link, a:visited {
+    color: navy; 
+}
