@@ -1,0 +1,56 @@
+#+title: d3 draggable object example #2 -- inline
+#
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/org/org-info.js
+#+html_head: <script type="text/javascript" src="/ext/d3/d3.js"></script>
+#+html_head: <script type="text/javascript" src="drag-example.js"></script>
+#+html_head: <link rel="stylesheet" type="text/css" href="../../css/notebook.css" />
+#+html_link_home: ../../index.html
+#+html_link_up: ../../index.html
+
+* Introduction
+  This is similar to example /#1/ (file:../drag1/index.org),  
+  except we now demonstrate html + javascript inline in the org-mode-generated html file
+
+  - ~.org~ source for this page is here: file:index-src.org
+
+* Prerequisites
+  As for example /#1/ (file:../drag1/index.org)
+
+* Procedure
+
+** Load d3 in html ~<head>~ element,  at the top of ~.org~ file
+   #+begin_example
+    ,#+html_head: <script type="text/javascript" src="/ext/d3/d3.js"></script>
+    ,#+html_head: <script type="text/javascript" src="drag-example.js"></script>
+   #+end_example
+
+** Create html fragment inline in .org file:
+   This causes frame to appear when this document finishes loading,  
+   (so it should likely already be present :-)
+  #+begin_example
+    ,#+begin_html
+    <div id="frame" style="border: 1px solid blue"></div>
+    <script type="text/javascript">
+      window.onload = function() { ex.start(this); }
+    </script>
+    #+end_html
+  #+end_example
+  #+begin_html
+  <div id="frame" style="border: 1px solid blue; max-width: 60em"></div>
+  <script type="text/javascript">
+    window.onload = function() { ex.start(this); }
+  </script>
+  #+end_html
+

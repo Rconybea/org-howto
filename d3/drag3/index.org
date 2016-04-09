@@ -1,0 +1,97 @@
+#+title: d3 draggable object example #3 -- parametric
+#
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/org/org-info.js
+#+html_head: <script type="text/javascript" src="/ext/d3/d3.js"></script>
+#+html_head: <script type="text/javascript" src="point.js"></script>
+#+html_head: <script type="text/javascript" src="fx.js"></script>
+#+html_head: <script type="text/javascript" src="fx_view.js"></script>
+#+html_head: <script type="text/javascript" src="parametric-drag-example.js"></script>
+#+html_head: <link rel="stylesheet" type="text/css" href="../../css/notebook.css" />
+#+html_link_home: ../../index.html
+#+html_link_up: ../../index.html
+
+* Introduction
+  This page uses the same technique as example /#2/ (file:../drag2/index.org),
+  except we demonstrate parametric dragging along a curve
+
+  - source :: org-mode source for this page is here: file:index-src.org
+
+* Prerequisites
+  As for example /#1/ (file:../drag1/index.org)
+
+* Procedure
+
+** Create javascript file point.js
+   This file contains convenience subroutines for working with (x,y) coordinates
+   - pt.scale_pt
+   - pt.add_pt
+   - pt.distance_squared
+   - pt.find_closest
+
+#+include: "point.js" src js -n
+
+** Create javascript file fx.js
+   This contains some utility procedures for working with functions
+   of one variable
+
+#+include: "fx.js" src js -n
+
+** Create javascript file fx_view.js
+   This file contains subroutines for managing svg elements (as d3 selections)
+   that display a function f(x)
+   
+#+include: "fx_view.js" src js -n
+
+** Create javascript file ~parametric-drag-example.js~:
+
+   This program:
+   - draws the cubic polynomial $f(x) = x * x * (x - 0.6)$
+   - draws a draggable filled circle that's constrained to coordinates $(x,f(x))$
+
+#+include: parametric-drag-example.js src js -n  
+
+** Load ~.js~ files in html header
+   Tell org-mode's html generator to load ~d3~ and ~parametric-drag-example.js~ 
+   when it generates this page's html ~<head>~ element.  
+   We did the same thing in example /#2/.
+   
+   At the top of the ~.org~ file:
+   #+begin_example
+    ,#+html_head: <script type="text/javascript" src="/ext/d3/d3.js"></script>
+    ,#+html_head: <script type="text/javascript" src="point.js"></script>
+    ,#+html_head: <script type="text/javascript" src="fx.js"></script>
+    ,#+html_head: <script type="text/javascript" src="fx_view.js"></script>
+    ,#+html_head: <script type="text/javascript" src="parametric-drag-example.js"></script>
+   #+end_example
+
+** Insert html fragment to invoke our interactive javascript code.
+   This also follows the same model we used in example /#2/.
+   #+begin_example
+    ,#+begin_html
+    <div id="frame"></div>
+    <script type="text/javascript">
+      window.onload = function() { ex.start(this); }
+    </script>
+    #+end_html
+  #+end_example
+  The div element ~#frame~ will appear below this line:
+  #+begin_html
+  <div id="frame"></div>
+  <script type="text/javascript">
+    window.onload = function() { ex.start(this); }
+  </script>
+  #+end_html
+
+   

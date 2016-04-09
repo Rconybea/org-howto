@@ -1,0 +1,62 @@
+#+title: d3 draggable object example #1 -- standalone
+#
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/org/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="../../css/notebook.css" />
+#+html_link_home: ../../index.html
+#+html_link_up: ../../index.org
+#
+
+* Introduction
+  Creating a draggable object in d3.
+  Following guide here:
+  http://ssun.azurewebsites.net/creating-a-draggable-object-in-d3
+
+  - ~.org~ source for this file is here: file:index-src.org
+
+* Prerequisites
+  1. A directory tree ~$HTTP_ROOT~ that you can visit in a browser or serve via http.
+     I use ~$HOME/Dropbox/public_html~, for example
+
+  2. Mike Bostock's ~d3~ installed in ~$HTTP_ROOT/ext/d3~:
+     #+begin_src sh :results output :exports both
+     ls -l $HOME/Dropbox/public_html/ext/d3
+     #+end_src
+
+     #+RESULTS:
+     : total 336
+     : -rw-rw-r-- 1 roland roland 337943 Mar 12 00:06 d3.js
+
+  3. Optionally,  a webserver making ~$HTTP_ROOT~ available over http,
+     for example:
+     #+begin_example
+     cd $HOME/Dropbox/public_html
+     python -m SimpleHTTPServer 8080
+     #+end_example
+
+  When this is in place,  
+  we should be able to bring up ~d3.js~ in a browser here: http:/ext/d3/d3.js
+
+* Procedure
+** Create skeleton html file
+   This is the file browser will load to deliver our example.
+   Create ~drag-example.html~.
+#+include: "drag-example.html" example
+
+** Create javascript file drag-example.js
+   Create ~drag-example.js~.
+   This is where our ~d3~ code lives.
+#+include: "drag-example.js" example
+
+** Try it here: http:drag-example.html
