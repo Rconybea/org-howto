@@ -1,0 +1,19 @@
+#+title: mac-screen-brightness.org source
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall toc:nil mouse:#ffc0c0 path:/ext/org/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
+#+html_link_home: index.html
+#+html_link_up: mac-trackpad-ubuntu.html
+
+#+include: "mac-screen-brightness.org" example
