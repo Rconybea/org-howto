@@ -1,0 +1,82 @@
+#+title: org-mode examples / tutorial
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+# 
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall mouse:#ff8080 toc:nil path:/ext/org/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="../css/notebook.css" />
+#+html_link_home: ../index.html
+#+html_link_up: ../index.html
+o
+* Introduction
+  Eric Nielsen, Jr.  has a lovely document describing how to do various useful things with org-mode.
+  This is my attempt to follow in his footsteps.
+  You can read the original here: http://ehneilsen.net/notebook/orgExamples/org-examples.html
+* Links
+  Links I found useful here:
+  - http://ehneilsen.net/notebook/orgExamples/org-examples.html
+    Eric Nielsen, Jr.'s emacs org-mode tutorial
+  - http://orgmode.org/worg/org-tutorials/org-publish-html-tutorial.html
+    Sebastian Rose's tutorial on org-mode publishing
+* org-mode header
+  Lines that begin with #+ are treated as org-mode instructions.
+
+** org-publish
+   Several org-exporter options are gathered under the #+options tag.
+*** subscripts
+    : ,#+options: ^:{}
+    controls whether text like a_b is understood as a_b or a_{b}.
+    the brackets mean that we need to write
+    : a_{b}
+    to get the result a_{b}
+** html
+   The following options apply only to the html exporter:
+*** attach a stylesheet
+    #+begin_example
+     #+html_head: <link rel="stylesheet" type="text/css" href="../css/notebook.css" />
+    #+end_example
+    This embeds the text
+    : <link rel="stylesheet" type="text/css" href="../css/notebook.css" />   
+    in the <head> section of the exported .html file
+    I'm using Eric Nielsen Jr.'s notebook.css file:
+#+include: ../css/notebook.css example
+*** use infojs (javascript texinfo-style navigation)
+    #+begin_example
+    #+INFOJS_OPT: view:showall toc:nil path:/ext/org/org-info.js
+    #+end_example
+
+    If you omit the ~path~ option, 
+    then the generated html will get ~org-info.js~ from http://orgmode.org/orginfo.js
+    I like to copy the file locally (e.g. to ~$HOME/Dropbox/public_html/ext/org/orginfo.js~)
+    so that I can count on navigation working when my laptop isn't connected to the interwebs.
+
+  ...to be continued...
+* quoting literal text  
+  See also: http://orgmode.org/manual/Literal-examples.html org-mode manual
+  Place text to be quoted between #+begin_example and #+end_example brackets:
+  #+begin_example
+    ,#+begin_example
+    To be, or not to be, that is the question.
+    ,#+end_example
+  #+end_example
+  displays as:
+  #+begin_example
+  To be, or not to be, that is the question.
+  #+end_example
+* embedding mathematics
+
+  See reference here: http://meta.math.stackexchange.com/questions/5020/mathjax-basic-tutorial-and-quick-reference
+
+  Use ~$..$~ to bracket inline formulae:
+  
+  For example: $\sum_{i=0}^n i^2 = \frac{(n^2+n)(2n+1)}{6}$ appears inline.
+
+  use ~$$..$$~ to bracket out-of-line formulae:
+  
