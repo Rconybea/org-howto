@@ -1,0 +1,18 @@
+#+title: index.org source
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view: showall
+#+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
+#+html_link_up: index.html
+
+#+include: "index.org" example

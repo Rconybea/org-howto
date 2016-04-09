@@ -1,0 +1,37 @@
+#+title: miscellaneous how-tos
+#
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/ext/org/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
+#+html_link_home: index.html
+
+* Introduction
+  how-to articles published using ~org-publish~.
+  Sandbox on ~roly-laptop-14~ (ubuntu), in ~$HOME/proj/org-howto~
+** sources
+   ~org-mode~ source is here: file:index-src.org 
+
+* Contents
+  - [[file:orgpub/org-examples.org]] cookbook for org-mode publishing
+  - file:mac-screen-brightness.org controlling screen brightness on MacBookPro + ubuntu
+  - file:mac-trackpad-ubuntu.org getting trackpad to work nicely on MacBookPro + ubuntu
+  - file:d3/drag1/index.org d3 draggable object example - standalone
+  - file:d3/drag2/index.org d3 draggable object example - inline
+  - file:d3/drag3/index.org d3 draggable object example - parametric
+  - file:d3/drag4/index.org d3 draggable object example - parametric + smooth selection
+  - file:d3/drag5/index.org d3 draggable object example - parametric + tangent [WIP]
+
+* Todo
+  - add fx_utils.js.  put ex.eval_fn(), ex.make_target_pt_v() in it
+  - in fx_utils.js,  add linear_transform(),  parameterizing ex.pt2screen()
