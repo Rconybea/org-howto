@@ -30,7 +30,8 @@
   - file:d3/drag2/index.org d3 draggable object example - inline
   - file:d3/drag3/index.org d3 draggable object example - parametric
   - file:d3/drag4/index.org d3 draggable object example - parametric + smooth selection
-  - file:d3/drag5/index.org d3 draggable object example - parametric + tangent [WIP]
+  - file:d3/drag5/index.org d3 draggable object example - parametric + tangent
+  - [[file:d3/drag6/index.org][drag.6]] d3 draggable object example - parametric + x-axis [WIP]
 
 * Todo
   - add fx_utils.js.  put ex.eval_fn(), ex.make_target_pt_v() in it

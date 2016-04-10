@@ -1,0 +1,153 @@
+#+title: d3 draggable object example #6 -- parametric + tangent line + axes
+#
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/org/org-info.js
+#+html_head: <script type="text/javascript" src="/ext/d3/d3.js"></script>
+#+html_head: <script type="text/javascript" src="point.js"></script>
+#+html_head: <script type="text/javascript" src="fx.js"></script>
+#+html_head: <script type="text/javascript" src="xyscale.js"></script>
+#+html_head: <script type="text/javascript" src="fx_view.js"></script>
+#+html_head: <script type="text/javascript" src="parametric-drag-example.js"></script>
+#+html_head: <link rel="stylesheet" type="text/css" href="../../css/notebook.css" />
+#+html_head: <link rel="stylesheet" type="text/css" href="drag6.css" />
+#+html_link_home: ../../index.html
+#+html_link_up: ../../index.html
+
+* Introduction
+
+  This page extends example [[file:~/proj/org-howto/d3/drag5/index.org][/#5/]],  adding d3 axes
+
+  - source :: org-mode source for this page is [[file:index-src.org][here]]
+
+* Prerequisites
+
+  As for examples [[file:../drag1/index.org][/#1/]], [[file://drag2/index.org][/#2/]], [[file:~/proj/org-howto/d3/drag3/index.org][/#3/]], [[file:~/proj/org-howto/d3/drag4/index.org][/#4/]], [[file:~/proj/org-howto/d3/drag5/index.org][/#5/]]
+
+* Procedure
+
+  Start with example [[file:~/proj/org-howto/d3/drag5/index.org][/#5/]]:  we will arrive at the following:
+  - [[file:index-src.org][index.org]] :: this file
+  - [[file:drag6.css][drag6.css]] :: new .css file with axis styling
+  - [[file:point.js][point.js]] :: procedures for working with 2d coordinate points (unchanged from /#5/)
+  - [[file:fx.js][fx.js]] :: specifies target function and derivative (unchanged from /#5/)
+  - [[file:fx_view.js][fx_view.js]] :: visualization code (edited as shown below)
+  - [[file:parametric-drag-example.js][parametric-drag-example.js]] :: setup code (unchanged from /#5/)
+		 
+** provide axis styling
+   Edit ~css/drag6.css~:
+   #+begin_example
+    .axis path,
+    .axis line {
+	fill: none;
+	stroke: black;
+    }
+
+    .axis text {
+	font-family: sans-serif;
+	font-size: 11px;
+    }
+   #+end_example
+
+** add stylesheet link to ~index.org~ (this .org file)
+
+   #+begin_example
+     ..
+     ,#+html_head: <link rel="stylesheet" type="text/css" href="drag6.css" />
+     ..
+   #+end_example
+
+** extend ~fxview.js~
+   Add functions ~fx_view.draw_x_axis~, ~fx_view.draw_y_axis~
+   #+begin_src js
+    /* box :: Svg
+     * xyscale :: Xyscale
+     */
+    fx_view.draw_x_axis = function(box_pt, box, xyscale)
+    {
+	var x_axis = (d3.svg.axis()
+		      .scale(xyscale.xscale)
+		      .orient("bottom"));
+
+	fx_view.box.append("svg:g")
+	    .attr("class", "axis")
+	    .attr("transform", "translate(0," + (0.5 * box_pt.y) + ")")
+	    .call(x_axis);
+
+	return x_axis;
+    } /*draw_x_axis*/
+   #+end_src
+   #+begin_src js
+    /* box :: Svg
+     * xyscale :: Xyscale
+     */
+    fx_view.draw_y_axis = function(box_pt, box, xyscale)
+    {
+	var y_axis = (d3.svg.axis()
+		      .scale(xyscale.yscale)
+		      .orient("left"));
+
+	box.append("svg:g")
+	    .attr("class", "axis")
+	    .attr("transform", "translate(" + (0.5 * box_pt.x) + ",0)")
+	    .call(y_axis);
+
+	return y_axis
+    } /*draw_y_axis*/
+   #+end_src
+   Call the new axis-creating functions from ~fx_view.draw~:
+   #+begin_src js
+    /* parent_id :: string.  pass this to d3.select() to get selection for parent
+     *   at which to attach svg box
+     * box_pt :: Point.  size of svg bounding box
+     * xyscale :: Xyscale
+     */
+    fx_view.draw = function(parent_id, box_pt, target_pt_v, xyscale)
+    {
+	/* create an svg bounding box, to contain interactive drawing area */
+	fx_view.box = fx_view.draw_bounding_box(parent_id, box_pt);
+
+	/* border, so bounding box is visible */
+	fx_view.border = fx_view.draw_border(box_pt, fx_view.box);
+
+	/* create axes.. */
+	fx_view.draw_x_axis(box_pt, fx_view.box, xyscale);
+	fx_view.draw_y_axis(box_pt, fx_view.box, xyscale);
+
+	/* create path representing our target function f(x) */
+	fx_view.fx_path = fx_view.draw_fx_path(fx_view.box, target_pt_v);
+
+	fx_view.fx_update_tangent_fn(xyscale.xscale.invert(0.5 * box_pt.x),
+				     box_pt, xyscale);
+
+	fx_view.fx_update_select_circle(pt.find_closest(pt.scale_pt(0.5, box_pt),
+							target_pt_v));
+    } /*draw*/
+   #+end_src
+** Insert html fragment to invoke our interactive javascript code
+   This also follows the same model we used in examples [[file:~/proj/org-howto/d3/drag3/index.org][/#3/]], [[file:~/proj/org-howto/d3/drag4/index.org][/#4/]], [[file:~/proj/org-howto/d3/drag5/index.org][/#5/]].
+   #+begin_example
+    ,#+begin_html
+    <div id="frame"></div>
+    <script type="text/javascript">
+      window.onload = function() { ex.start(this); }
+    </script>
+    #+end_html
+   #+end_example
+   The div element ~#frame~ will appear below this line:
+   #+begin_html
+   <div id="frame"></div>
+   <script type="text/javascript">
+     window.onload = function() { ex.start(this); }
+   </script>
+   #+end_html
