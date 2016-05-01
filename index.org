@@ -29,9 +29,11 @@
   - file:d3/drag1/index.org d3 draggable object example - standalone
   - file:d3/drag2/index.org d3 draggable object example - inline
   - file:d3/drag3/index.org d3 draggable object example - parametric
-  - file:d3/drag4/index.org d3 draggable object example - parametric + smooth selection
-  - file:d3/drag5/index.org d3 draggable object example - parametric + tangent
-  - [[file:d3/drag6/index.org][drag.6]] d3 draggable object example - parametric + x-axis [WIP]
+  - [[file:d3/drag4/index.org][drag.4]] d3 draggable object example - parametric + smooth selection
+  - [[file:d3/drag5/index.org][drag.5]] d3 draggable object example - parametric + tangent
+  - [[file:d3/drag6/index.org][drag.6]] d3 draggable object example - parametric + axes
+  - [[file:d3/drag7/index.org][drag.7]] d3 draggable object example - parametric + tangent + quadratic *[WIP]*
+  - [[file:option/blackscholes/index.org][blackscholes]] interactive option pricing example *[WIP]*
 
 * Todo
   - add fx_utils.js.  put ex.eval_fn(), ex.make_target_pt_v() in it
