@@ -28,6 +28,55 @@
 	    drag_function : null
 	};
 
+    fx_view.init_fn
+	= function(target_fn, target_fn_deriv)
+    {
+	fx_view.target_fn = target_fn;
+	fx_view.target_deriv_fn = target_fn_deriv;
+	fx_view.target_pt_fn = fx.make_pt_fn(target_fn);
+    } /*init_fn*/
+
+    fx_view.init_xyscale
+	= function(box_pt, scale_factor, lo_x, hi_x, lo_y, hi_y)
+    {
+	/* domain = natural coords;
+	 * range  = screen coords
+	 * 
+	 * 0.0 -> 0.5*box_pt.x
+	 * 1.0 -> 0.5*box_pt.x + 200
+	 */
+	var xscale = d3.scale.linear()
+	    .domain([lo_x,
+		     hi_x])
+	    .range([0.0 + 50, box_pt.x - 50]);
+	var yscale = d3.scale.linear()
+	    .domain([lo_y, hi_y])
+	    .range([box_pt.y - 50, 0.0 + 50]);
+
+	fx_view.box_pt = box_pt;
+	fx_view.xyscale = new xyscale(xscale, yscale);
+    } /*init_xyscale*/
+
+    fx_view.init_target_pt_v
+	= function(lo_x, hi_x, n_pt)
+    {
+	fx_view.target_pt_v
+	    = fx.make_target_pt_v(fx_view.target_pt_fn,
+				  lo_x, hi_x, n_pt,
+				  fx_view.xyscale, fx_view.box_pt);
+    } /*init_target_pt_v*/
+
+    fx_view.init_sequence
+	= function(target_fn, target_deriv_fn,
+		   box_pt, scale_factor,
+		   lo_x, hi_x, lo_y, hi_y, n_pt)
+    {
+	fx_view.init_fn(target_fn, target_deriv_fn);
+	fx_view.init_xyscale(box_pt, scale_factor, lo_x, hi_x, lo_y, hi_y);
+	fx_view.init_target_pt_v(lo_x, hi_x, n_pt);
+	fx_view.init_drag_function();
+    } /*init_sequence*/
+
     /* function to create an SVG approximation to a parametric function 
      * using a series of straight line segments
      */
@@ -37,18 +86,18 @@
 			   .interpolate("linear"));
 
     /* redraw tangent function at (natural) x-coordinate x0 
-     * xyscale :: Xyscale
      */
     fx_view.fx_update_tangent_fn
-	= function(x0, box_pt, xyscale)
+	= function(x0, box_pt)
     {
-	fx_view.fx_tangent_fn = fx.make_tangent_pt_fn(x0);
+	fx_view.fx_tangent_fn
+	    = fx.make_tangent_pt_fn(x0, fx_view.target_fn, fx_view.target_deriv_fn);
 
-	var lh_edge = xyscale.xscale.invert(0.0 /*screen x-coord*/);
-	var rh_edge = xyscale.xscale.invert(box_pt.x /*screen x-coord*/);
+	var lh_edge = fx_view.xyscale.xscale.invert(0.0 /*screen x-coord*/);
+	var rh_edge = fx_view.xyscale.xscale.invert(box_pt.x /*screen x-coord*/);
 
-	var dd = [{pt1: xyscale.scale_pt(fx_view.fx_tangent_fn(lh_edge)),
-		   pt2: xyscale.scale_pt(fx_view.fx_tangent_fn(rh_edge))}];
+	var dd = [{pt1: fx_view.xyscale.scale_pt(fx_view.fx_tangent_fn(lh_edge)),
+		   pt2: fx_view.xyscale.scale_pt(fx_view.fx_tangent_fn(rh_edge))}];
 
 	fx_view.dfx_line = (fx_view.box.selectAll(".dfxline")
 			    .data(dd));
@@ -133,7 +182,7 @@
 
 	box.append("svg:g")
 	    .attr("class", "axis")
-	    .attr("transform", "translate(0," + (0.5 * box_pt.y) + ")")
+	    .attr("transform", "translate(0," + xyscale.yscale(0.0) + ")")
 	    .call(x_axis);
 
 	return x_axis;
@@ -150,7 +199,7 @@
 
 	box.append("svg:g")
 	    .attr("class", "axis")
-	    .attr("transform", "translate(" + (0.5 * box_pt.x) + ",0)")
+	    .attr("transform", "translate(" + xyscale.xscale(0.0) + ",0)")
 	    .call(y_axis);
 
 	return y_axis
@@ -175,29 +224,28 @@
 
     /* parent_id :: string.  pass this to d3.select() to get selection for parent
      *   at which to attach svg box
-     * box_pt :: Point.  size of svg bounding box
      * xyscale :: Xyscale
      */
-    fx_view.draw = function(parent_id, box_pt, target_pt_v, xyscale)
+    fx_view.draw = function(parent_id)
     {
 	/* create an svg bounding box, to contain interactive drawing area */
-	fx_view.box = fx_view.draw_bounding_box(parent_id, box_pt);
+	fx_view.box = fx_view.draw_bounding_box(parent_id, fx_view.box_pt);
 
 	/* border, so bounding box is visible */
-	fx_view.border = fx_view.draw_border(box_pt, fx_view.box);
+	fx_view.border = fx_view.draw_border(fx_view.box_pt, fx_view.box);
 
 	/* create axes.. */
-	fx_view.draw_x_axis(box_pt, fx_view.box, xyscale);
-	fx_view.draw_y_axis(box_pt, fx_view.box, xyscale);
+	fx_view.draw_x_axis(fx_view.box_pt, fx_view.box, fx_view.xyscale);
+	fx_view.draw_y_axis(fx_view.box_pt, fx_view.box, fx_view.xyscale);
 
 	/* create path representing our target function f(x) */
-	fx_view.fx_path = fx_view.draw_fx_path(fx_view.box, target_pt_v);
+	fx_view.fx_path = fx_view.draw_fx_path(fx_view.box, fx_view.target_pt_v);
 
-	fx_view.fx_update_tangent_fn(xyscale.xscale.invert(0.5 * box_pt.x),
-				     box_pt, xyscale);
+	fx_view.fx_update_tangent_fn(fx_view.xyscale.xscale.invert(0.5 * fx_view.box_pt.x),
+				     fx_view.box_pt);
 
-	fx_view.fx_update_select_circle(pt.find_closest(pt.scale_pt(0.5, box_pt),
-							target_pt_v));
+	fx_view.fx_update_select_circle(pt.find_closest(pt.scale_pt(0.5, fx_view.box_pt),
+							fx_view.target_pt_v));
     } /*draw*/
 
     /* update selection circle
@@ -242,29 +290,31 @@
     } /*fx_update_select*/
   
     fx_view.init_drag_function
-	= (function(box_pt, target_pt_v, xyscale) {
-	    fx_view.drag_function
-		= (d3.behavior.drag()
-		   .on("dragstart",
-		       function() {
-			   fx_view.fx_select_circle
-			       .style("fill", "red")
-			       .attr("r", 5);
-		       })
-		   .on("drag",
-		       function() {
-			   fx_view.fx_update_select(d3.event,
-						    box_pt, target_pt_v,
-						    xyscale);
-		       })
-		   .on("dragend",
-		       function() {
-			   fx_view.fx_select_circle
-			       .style("fill", "black")
-			       .attr("r", 4);
-		       })
-		  );
-	});
+	= function()
+    {
+	fx_view.drag_function
+	    = (d3.behavior.drag()
+	       .on("dragstart",
+		   function() {
+		       fx_view.fx_select_circle
+			   .style("fill", "red")
+			   .attr("r", 5);
+		   })
+	       .on("drag",
+		   function() {
+		       fx_view.fx_update_select(d3.event,
+						fx_view.box_pt,
+						fx_view.target_pt_v,
+						fx_view.xyscale);
+		   })
+	       .on("dragend",
+		   function() {
+		       fx_view.fx_select_circle
+			   .style("fill", "black")
+			   .attr("r", 4);
+		   })
+	      );
+    };
 
     this.fx_view = fx_view;
 }();

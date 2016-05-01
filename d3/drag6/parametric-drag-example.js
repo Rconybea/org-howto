@@ -9,32 +9,32 @@
 
     ex.box_pt = {x: 700, y: 450};
 
+    /* target function f(x)
+     * x :: number
+     * returns :: number
+     */
+    ex.target_fn = function(x) {
+	return x * x * (x - 0.6);
+    } /*target_fn*/
+
+    /* derivative f'(x) of fx.target_fn
+     * x :: number
+     * returns :: number
+     */
+    ex.target_deriv_fn = function(x) {
+	return x * (3 * x - 1.2); 
+    } /*target_deriv_fn*/
+
     /* w :: Window */
     ex.start = function(w)
     {
-	/* domain = natural coords;
-	 * range  = screen coords
-	 * 
-	 * 0.0 -> 0.5*box_pt.x
-	 * 1.0 -> 0.5*box_pt.x + 200
-	 */
-	ex.x_scale = d3.scale.linear()
-	    .domain([-0.5 * ex.box_pt.x / 200.0,
-		     +0.5 * ex.box_pt.x / 200.0])
-	    .range([0.0, ex.box_pt.x]);
-
-	ex.y_scale = d3.scale.linear()
-	    .domain([-0.5 * ex.box_pt.y / 200.0,
-		     + 0.5 * ex.box_pt.y / 200.0])
-	    .range([ex.box_pt.y, 0.0]);
-
-	ex.xyscale = new xyscale(ex.x_scale, ex.y_scale);
-
-	ex.target_pt_v = fx.make_target_pt_v(fx.eval_fn,
-					     -1.66, +5.0, 200.0 /*n_pt*/,
-					     ex.xyscale, ex.box_pt);
-	fx_view.init_drag_function(ex.box_pt, ex.target_pt_v, ex.xyscale);
-	fx_view.draw("#frame", ex.box_pt, ex.target_pt_v, ex.xyscale);
+	fx_view.init_sequence(ex.target_fn, ex.target_deriv_fn,
+			      ex.box_pt, 200.0 /*scale_factor*/,
+			      -1.66 /*lo_x*/, +2.0 /*hi_x*/,
+			      -1.66*ex.box_pt.y/ex.box_pt.x /*lo_y*/,
+			      +2.0*ex.box_pt.y/ex.box_pt.x /*hi_y*/,
+			      200 /*n_pt*/);
+	fx_view.draw("#frame");
     }
     
     this.ex = ex;
