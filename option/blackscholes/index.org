@@ -1,0 +1,85 @@
+#+title: black-scholes example
+#
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/org/org-info.js
+#+html_mathjax: align:left indent:5em path:/ext/mathjax/MathJax.js
+#+html_head: <script type="text/javascript" src="/ext/d3/d3.js"></script>
+#+html_head: <script type="text/javascript" src="point.js"></script>
+#+html_head: <script type="text/javascript" src="fx.js"></script>
+#+html_head: <script type="text/javascript" src="xyscale.js"></script>
+#+html_head: <script type="text/javascript" src="fx_view.js"></script>
+#+html_head: <script type="text/javascript" src="normal.js"></script>
+#+html_head: <script type="text/javascript" src="blackscholes.js"></script>
+#+html_head: <script type="text/javascript" src="parametric-drag-example.js"></script>
+#+html_head: <link rel="stylesheet" type="text/css" href="../../css/notebook.css" />
+#+html_head: <link rel="stylesheet" type="text/css" href="drag6.css" />
+#+html_link_home: ../../index.html
+#+html_link_up: ../../index.html
+
+* Introduction
+  This is intended to be an interactive Black-Scholes option-pricing demonstration.
+  *Warning: Work in progress*
+
+  - ~.org~ source for this page is here: [[file:index-src.org][index.org]]
+
+** Option pricing
+   The Black-Scholes formula for European call options is:
+   $$ C(s,t) = N(d_{1})S = N(d_{2})Ke^{-r\tau} $$
+   where $N(x)$ is the cumulative normal distribution function:
+   $$ N(x) = \frac{1}{\sqrt{2\pi}}\int_{-\infty}^{x}{e^{-\frac{x^2}{2}} dx} $$
+   We also have $N'(x)$ is the normal probability density function:
+   $$ N'(x) = \frac{1}{\sqrt{2\pi}}e^{-\frac{x^2}{2}} $$
+   $$ d_{1} = \frac{1}{\sigma\sqrt{\tau}}
+        \left[\ln{\left(\frac{S}{K}\right)}+\left(r+\frac{\sigma^2}{2}\right)\tau\right] $$
+   and
+   $$ d_{2} = d_{1} - \sigma\sqrt{\tau} $$
+
+   We also have greeks:
+   $$ delta: \frac{\partial C}{\partial S} = N(d_{1}) $$
+   $$ gamma: \frac{N'(d1)}{S\sigma\sqrt{\tau}} $$
+* Prerequisites
+  As for [[file:~/proj/org-howto/d3/drag1/index.org#Prerequisites][d3 example /#1/]]
+
+* Procedure
+
+** Cumulative normal distribution
+   We use the ubiquitous polynomial approximation.
+   Write ~normal.js~
+
+#+include: normal.js example
+
+** Black-Scholes call
+   Write ~blackscholes.js~
+
+#+include: blackscholes.js example
+
+** Insert html fragment to invoke our interactive javascript code
+   This also follows the same model we used in examples [[file:~/proj/org-howto/d3/drag3/index.org][/#3/]], [[file:~/proj/org-howto/d3/drag4/index.org][/#4/]], [[file:~/proj/org-howto/d3/drag5/index.org][/#5/]].
+   #+begin_example
+    ,#+begin_html
+    <div id="frame"></div>
+    <script type="text/javascript">
+      window.onload = function() { ex.start(this); }
+    </script>
+    #+end_html
+   #+end_example
+   The div element ~#frame~ will appear below this line:
+   #+begin_html
+   <div id="frame"></div>
+   <script type="text/javascript">
+     window.onload = function() { ex.start(this); }
+   </script>
+   #+end_html
+
+   
