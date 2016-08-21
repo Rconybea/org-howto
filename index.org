@@ -33,6 +33,7 @@
   - file:mac-screen-brightness.org controlling screen brightness on MacBookPro + ubuntu
   - file:mac-trackpad-ubuntu.org getting trackpad to work nicely on MacBookPro + ubuntu
   - file:xkb.org setting up keyboard with X11
+  - [[file:xmonad-crib.org]] setting up xmonad look-ma-no-mouse window manager
   - file:d3/drag1/index.org d3 draggable object example - standalone
   - file:d3/drag2/index.org d3 draggable object example - inline
   - file:d3/drag3/index.org d3 draggable object example - parametric
