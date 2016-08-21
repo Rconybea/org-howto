@@ -23,15 +23,66 @@
 * Links
   - [[http://xmonad.org/tour.html]] -- xmonad quick reference
   - [[https://wiki.haskell.org/Xmonad/Frequently_asked_questions]] -- xmonad FAQ
+  - [[https://wiki.haskell.org/Xmonad/Config_archive/Template_xmonad.hs_(0.8)]] -- xmonad config template
+  - [[http://tombuntu.com/index.php/2009/03/19/adding-a-dzen2-statusbar-to-xmonad]] -- dzen2 status bar
 
 * Setup
-  edit =.xmonad/xmonad.hs=:
-  #+begin_example
-  import Xmonad
+** step 1 -- use command instead of option to issue xmonad commands
+   edit =.xmonad/xmonad.hs=:
+   #+begin_example
+      import Xmonad
 
-  -- use command key to control xmonad
-  main = xmonad defaultConfig { modMask = mod4Mask }
-  #+end_example
+      main = xmonad defaultConfig { modMask = mod4Mask }
+   #+end_example
+** step2 -- turn off focus-follows-mouse
+   #+begin_example
+     import Xmonad
+
+     main = xmonad defaultConfig
+       {
+	 modMask = mod4Mask,
+	 focusFollowsMouse = False,
+       }
+   #+end_example
+** step3 -- configure dzen2
+   edit =.xmonad/xmonad.hs=
+   #+begin_example
+     import XMonad.Hooks.DynamicLog
+     import XMonad.Hooks.ManageDocks
+
+     myLayout = avoidStruts (tiled ||| Mirror tiled ||| Full) ||| Full
+       where
+	 tiled = Tall nmaster delta ratio
+	 nmaster = 1
+	 ratio = 1/2
+	 delta = 1/100
+
+     myLogHook = dynamicLog
+
+     main = xmonad defaultConfig
+       {
+	 modMask = mod4Mask,
+	 focusFollowsMouse = False,
+	 layoutHook = myLayout,
+	 logHook = myLogHook
+       }
+   #+end_example
+
+   edit =$HOME/bin/xmonad+dzen2.sh=:
+   #+begin_example
+     #!/bin/sh
+     xmonad | dzen2
+   #+end_example
+  
+   edit =/usr/share/xsessions/xmonad+dzen.desktop= (as root):
+   #+begin_example
+     [Desktop Entry]
+     Name=XMonad+Dzen2
+     Comment=Lightweight tiling window manager
+     Exec=/home/roland/bin/xmonad+dzen2.sh
+     Icon=xmonad.png
+     Type=XSession
+   #+end_example
 
 * Reference Card
   A=command
@@ -39,6 +90,7 @@
   |-----------+---------------+-------------------------------------------|
   | wm        | A-q           | restart xmonad                            |
   | wm        | A-S-q         | quit xmonad                               |
+  | wm        | A-S-/         | help window                               |
   |-----------+---------------+-------------------------------------------|
   | start     | A-S-RET       | open a terminal                           |
   | start     | A-p           | start program using dmenu                 |
@@ -50,7 +102,7 @@
   | layout    | A-S-j/A-S-k   | swap focus window with next/prev neighbor |
   |-----------+---------------+-------------------------------------------|
   | focus     | A-TAB/A-S-TAB | move focus to next/prev window            |
-  | focus     | A-j/A-k       | move fucs to next/prev window             |
+  | focus     | A-j/A-k       | move focus to next/prev window            |
   | focus     | A-m           | move focus to master window               |
   |-----------+---------------+-------------------------------------------|
   | resize    | A-l/A-h       | incr/decr size of master pane             |
