@@ -1,0 +1,66 @@
+#+title: xmonad crib
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+# 
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall mouse:#ff8080 toc:nil ltoc:nil path:/ext/org/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
+#+html_link_home: index.html
+#+html_link_up: index.html
+
+* Introduction 
+  Reference card for doing useful things with =xmonad=
+
+  - source :: .org mode source for this page is here: file:xmonad-crib-src.org
+
+* Links
+  - [[http://xmonad.org/tour.html]] -- xmonad quick reference
+  - [[https://wiki.haskell.org/Xmonad/Frequently_asked_questions]] -- xmonad FAQ
+
+* Setup
+  edit =.xmonad/xmonad.hs=:
+  #+begin_example
+  import Xmonad
+
+  -- use command key to control xmonad
+  main = xmonad defaultConfig { modMask = mod4Mask }
+  #+end_example
+
+* Reference Card
+  A=command
+  | category  | key           | description                               |
+  |-----------+---------------+-------------------------------------------|
+  | wm        | A-q           | restart xmonad                            |
+  | wm        | A-S-q         | quit xmonad                               |
+  |-----------+---------------+-------------------------------------------|
+  | start     | A-S-RET       | open a terminal                           |
+  | start     | A-p           | start program using dmenu                 |
+  | start     | A-S-c         | kill focus window                         |
+  |-----------+---------------+-------------------------------------------|
+  | layout    | A-SPC         | cycle tilings                             |
+  | layout    | A-,/A-.       | incr/decr #of windows in master pane      |
+  | layout    | A-RET         | swap focus window with master pane        |
+  | layout    | A-S-j/A-S-k   | swap focus window with next/prev neighbor |
+  |-----------+---------------+-------------------------------------------|
+  | focus     | A-TAB/A-S-TAB | move focus to next/prev window            |
+  | focus     | A-j/A-k       | move fucs to next/prev window             |
+  | focus     | A-m           | move focus to master window               |
+  |-----------+---------------+-------------------------------------------|
+  | resize    | A-l/A-h       | incr/decr size of master pane             |
+  |-----------+---------------+-------------------------------------------|
+  | workspace | A-[1-9]       | switch to workspace #1..#9                |
+  | workspace | A-S-[1-9]     | move focus window to workspace #1..#9     |
+  |-----------+---------------+-------------------------------------------|
+  | floating  | A-mouse1      | float window                              |
+  | floating  | A-t           | return floating window to tiling          |
+  | floating  | A-mouse2      | bring floating window to the top          |
+  | floating  | A-mouse3      | resize floating window                    |
+  |-----------+---------------+-------------------------------------------|
+
