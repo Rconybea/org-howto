@@ -1,0 +1,163 @@
+#+title: xkb resources
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/ext/org/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
+#+html_link_home: index.html
+#+html_link_up: index.html
+
+* Introduction
+
+  Resources for using =xkb= to control keyboard map.
+  =xmodmap= is deprecated,  because it requires a base to work from -- it behaves like a 'patch'
+
+* Links
+  - [[http://madduck.net/docs/extending-xkb]] -- xkb howto
+  - https://wiki.debian.org/XStrikeForce/InputHotplugGuide -- debian hotplug guide for X11
+
+* Commands
+
+** setxkbmap
+   * model: keyboard model; defines which keys exist
+   * layout: keyboard layout; defines what keys do
+   * variant: layout variations
+   * options: configurable aspects -- keyboard features
+
+   To install a new keymap:
+   #+begin_example
+   setxkbmap -model thinkpad -layout us -variant intl -option grp:win_switch
+   #+end_example
+
+   To make capslock work like control:
+   #+begin_example
+   setxkbmap -option ctrl:nocaps
+   #+end_example
+
+* Queries
+
+** xkb rules
+   #+begin_src sh :exports both :results output
+   cat //usr/share/X11/xkb/rules/evdev | grep grp:win
+   #+end_src
+
+   #+RESULTS:
+   :   grp:win_switch	=	+group(win_switch)
+   :   grp:win_space_toggle	=	+group(win_space_toggle)
+   :   grp:win_menu_switch	=	+group(win_menu_switch)
+
+** find codes interactively
+   #+begin_example
+   xev | sed -ne '/^KeyPress/,/^$/p'
+   #+end_example
+   Now press a key to get output like:
+   #+begin_example
+   KeyPress event, serial 32, synthetic NO, window ..
+   root .., subw .., time .., (878,1020), root:(2320,1621),
+   state .., keycode 128 (keysym 0x1008ff4a, XF86LaunchA), same_screen YES
+   #+end_example
+
+** setxkbmap
+   Use =setxkbmap= to print what it /would/ do without actually doing it:
+   #+begin_src sh :exports both :results output
+   setxkbmap -model thinkpad -layout us -variant intl -option grp:win_switch -print
+   #+end_src
+
+   #+RESULTS:
+   : xkb_keymap {
+   : 	xkb_keycodes  { include "evdev+aliases(qwerty)"	};
+   : 	xkb_types     { include "complete"	};
+   : 	xkb_compat    { include "complete"	};
+   : 	xkb_symbols   { include "pc+us(intl)+inet(evdev)+group(win_switch)"	};
+   : 	xkb_geometry  { include "thinkpad(us)"	};
+   : };
+
+** /etc/default/keyboard
+   #+begin_src sh :exports both :results output
+   grep -i xkb /etc/default/keyboard
+   #+end_src
+
+   #+RESULTS:
+   : XKBMODEL="pc105"
+   : XKBLAYOUT="us"
+   : XKBVARIANT=""
+   : XKBOPTIONS=""
+
+** udevadm
+   #+begin_src sh :exports both :results output
+   udevadm info --export-db | grep -i XKB
+   #+end_src
+   
+   #+RESULTS:
+   #+begin_example
+   E: XKBLAYOUT=us
+   E: XKBMODEL=pc105
+   E: XKBLAYOUT=us
+   E: XKBMODEL=pc105
+   E: XKBLAYOUT=us
+   E: XKBMODEL=pc105
+   E: XKBLAYOUT=us
+   E: XKBMODEL=pc105
+   E: XKBLAYOUT=us
+   E: XKBMODEL=pc105
+   #+end_example
+
+** /var/log/Xorg.0.log
+   #+begin_src sh :exports both :results output
+   cat /var/log/Xorg.0.log | grep -C 1 -i 'internal keyboard'
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   [   456.475] (II) This device may have been added with another device file.
+   [   456.475] (II) config/udev: Adding input device Apple Inc. Apple Internal Keyboard / Trackpad (/dev/input/event5)
+   [   456.475] (**) Apple Inc. Apple Internal Keyboard / Trackpad: Applying InputClass "evdev keyboard catchall"
+   [   456.475] (II) Using input driver 'evdev' for 'Apple Inc. Apple Internal Keyboard / Trackpad'
+   [   456.475] (**) Apple Inc. Apple Internal Keyboard / Trackpad: always reports core events
+   [   456.475] (**) evdev: Apple Inc. Apple Internal Keyboard / Trackpad: Device: "/dev/input/event5"
+   [   456.475] (--) evdev: Apple Inc. Apple Internal Keyboard / Trackpad: Vendor 0x5ac Product 0x262
+   [   456.475] (--) evdev: Apple Inc. Apple Internal Keyboard / Trackpad: Found keys
+   [   456.475] (II) evdev: Apple Inc. Apple Internal Keyboard / Trackpad: Configuring as keyboard
+   [   456.475] (**) Option "config_info" "udev:/sys/devices/pci0000:00/0000:00:14.0/usb1/1-12/1-12:1.0/0003:05AC:0262.0001/input/input5/event5"
+   [   456.475] (II) XINPUT: Adding extended input device "Apple Inc. Apple Internal Keyboard / Trackpad" (type: KEYBOARD, id 10)
+   [   456.475] (**) Option "xkb_rules" "evdev"
+   #+end_example
+
+** dump keyboard map
+
+   #+begin_src sh :exports both :results output
+   xkbcomp $DISPLAY /tmp/xkb.dump
+   cat /tmp/xkb.dump | head -18
+   #+end_src
+
+   #+RESULTS:
+   #+begin_example
+   xkb_keymap {
+   xkb_keycodes "evdev+aliases(qwerty)" {
+       minimum = 8;
+       maximum = 255;
+	<ESC> = 9;
+       <AE01> = 10;
+       <AE02> = 11;
+       <AE03> = 12;
+       <AE04> = 13;
+       <AE05> = 14;
+       <AE06> = 15;
+       <AE07> = 16;
+       <AE08> = 17;
+       <AE09> = 18;
+       <AE10> = 19;
+       <AE11> = 20;
+       <AE12> = 21;
+       <BKSP> = 22;
+#+end_example
+
