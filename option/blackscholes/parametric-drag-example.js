@@ -7,7 +7,7 @@
      * - fx_view.js
      */
 
-    ex.box_pt = {x: 700, y: 450};
+    ex.box_pt = {x: 600, y: 450};
 
     ex.strike = 1.0;
     ex.tau = 1.0;
