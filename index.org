@@ -17,15 +17,22 @@
 #+html_link_home: index.html
 
 * Introduction
-  how-to articles published using ~org-publish~.
+  how-to articles published using ~org-publish~ to =$HOME/public_html/howto=.
+  Serve with 
+  #+begin_example
+  (cd ~/public_html && python -m SimpleHTTPServer 8080)
+  #+end_example
   Sandbox on ~roly-laptop-14~ (ubuntu), in ~$HOME/proj/org-howto~
+
 ** sources
    ~org-mode~ source is here: file:index-src.org 
 
 * Contents
   - [[file:orgpub/org-examples.org]] cookbook for org-mode publishing
+  - [[file:living-room-av.org]] living room A/V setup
   - file:mac-screen-brightness.org controlling screen brightness on MacBookPro + ubuntu
   - file:mac-trackpad-ubuntu.org getting trackpad to work nicely on MacBookPro + ubuntu
+  - file:xkb.org setting up keyboard with X11
   - file:d3/drag1/index.org d3 draggable object example - standalone
   - file:d3/drag2/index.org d3 draggable object example - inline
   - file:d3/drag3/index.org d3 draggable object example - parametric
