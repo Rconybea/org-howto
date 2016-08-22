@@ -1,0 +1,119 @@
+#+title: macbook pro (11,3) install ubuntu (16.04)
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/ext/org/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
+#+html_link_home: index.html
+#+html_link_up: index.html
+
+* Plan - lesavik (another geek's notebook)
+  Gathering various web resources
+** [[http://lesavik.net/post/getting-ubuntu-linux-to-work-on-macbook-air-7.2/]]
+*** grub
+   add to GRUB_CMDLINE_LINUX_DEFAULT in /etc/default/grub:
+   #+begin_example
+   intel_idle.max_cstate=1 acpi_backlight=vendor
+   #+end_example
+   first fixes occasional freezing.
+   second gets backlight controls to work.
+*** function keys
+   this fix so that function keys are F1..F12 
+   #+begin_example
+   echo options hid_apple fnmode=2 | tee -a /etc/modprobe.d/hid_apple.conf
+   update-initramfs -u -k all
+   #+end_example
+*** webcam
+   working linux driver
+   #+begin_example
+   git clone https://github.com/patjak/bcwc_pcie.git
+   # download the OSX driver and extract webcam firmware we require..
+   cd bcwc_pcie/firmware/
+   make
+   make install
+   cd ..
+   # build the driver
+   make
+   # ignore the openssl errors
+   make install
+   # load module on every boot
+   sed -i '$imodprobe facetimehd' /etc/rc.local
+   # blacklist the bdc_pci module -- it causes problems
+   echo "blacklist bdc_pci" > /etc/modprobe.d/blacklist.conf
+   #+end_example
+*** backlight
+   #+begin_example
+   git clone git://github.com/patjak/mba6x_bl
+   cd mba6x_bl
+   make
+   make install
+   #+end_example
+*** power tuning
+   run powertop -auto-tune
+   add to /etc/rc.local so it runs on every startup
+*** cooling
+   try macfanctld (ubuntu package)
+   proposed config:
+   #+begin_example
+   fan_min: 1000
+   temp_avg_floor: 45
+   temp_avg_ceiling: 55
+   temp_TC0P_floor: 52
+   temp_TC0P_ceiling: 60
+   temp_TG0P_floor: 50
+   temp_TG0P_ceiling: 58
+   exclude: 18 19
+   log_level: 0
+   #+end_example
+*** video playback
+   edit /etc/X11/xorg.conf.d/10-intel.conf
+   #+begin_example
+   Section "Device"
+      Identifier "Intel Graphics"
+      Driver "intel"
+      Option "AccelMethod" "uxa" # instead of "sna"
+      Option "TearFree" "true"
+   EndSection
+   #+end_example
+
+** http://www.techonia.com/960/install-linuxmint-macbook
+   steps to make usb stick installer (on OSX):
+   #+begin_example
+   hdiutil convert -format UDRW \
+      -o ubuntu-16.04.1-dekstop-amd64.img \
+      ubuntu-16.04.1-desktop-amd64.iso
+   diskutil list
+   diskutil unmountDisk /dev/diskN
+   sudo dd if=ubuntu-16.04.1-deskto-64bit.img.dmg of=/dev/riskN bs=1m
+   diskutil eject /dev/diskN
+   #+end_example
+** https://www.debian.org/releases/jessie/amd64/ch04s03.html.en
+   steps to make usb stick installer (on ubuntu)
+   1. insert usb stick
+   2. run =dmesg=:
+     #+begin_example
+     dmesg | tail -10
+     #+end_example
+   3. the output should identify the device used for usb.
+     For =roly-laptop-14=,  this seems to be =/dev/sdc=
+   4. copy =.iso= to the usb stick:
+      (this takes a while -- about 4MB/sec)
+      #+begin_example
+      sudo cp ubuntu-16.04.1-desktop.amd64.iso /dev/sdc
+      sync
+      #+end_example
+
+** http://www.ubuntu.com/download/desktop/create-a-usb-stick-on-ubuntu
+   steps to make usb stick installer (on ubuntu):
+   - insert usb stick (2GB + free space)
+   - search for 'startup disk creator'
+   - click 'other' to choose downloaded ISO file
