@@ -84,10 +84,16 @@
 
 ** to choose performance mode  
    #+begin_example
-   sudo echo performance > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+   sudo cpufreq-set -c 0 -g performance
    #+end_example
 
 ** to restore powersave mode
    #+begin_example
-   sudo echo powersave > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+   sudo cpufreq-set -c 0 -g powersave
+   #+end_example
+
+** control core on which a task runs
+   #+begin_example
+   cd ~/proj/perf/src
+   taskset -c 0 ./perf
    #+end_example
