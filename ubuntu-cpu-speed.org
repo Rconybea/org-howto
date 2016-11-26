@@ -1,0 +1,89 @@
+#+title: ubuntu (16.04) control cpu speed
+# org-publish options
+# H:2   controls section numbering.  
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.  
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+language: en
+#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/ext/org/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
+#+html_link_home: index.html
+#+html_link_up: index.html
+
+* Introduction
+  Want ability to control cpu speed to allow meaningful performance testing.
+
+** sources
+   ~org-mode~ source is here: file:ubuntu-cpu-speed-src.org
+
+* Prerequisites
+  #+begin_example
+  sudo apt-get install cpufrequtils
+  #+end_example
+
+* Monitoring Commands
+
+** view available setters
+   #+begin_example
+   sudo cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_available_governors
+   #+end_example
+   I see this output:
+   #+begin_example
+   performance powersave
+   #+end_example
+
+** view current scaling state
+   #+begin_example
+   sudo cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+   #+end_example
+   I typically see this output:
+   #+begin_example
+   powersave
+   #+end_example
+
+** view current cpu state
+   #+begin_example
+   cpufreq-info
+   #+end_example
+   output like this (cpus 1..6 removed for brevity):
+   #+begin_example
+   cpufrequtils 008: cpufreq-info (C) Dominik Brodowski 2004-2009
+   Report errors and bugs to cpufreq@vger.kernel.org, please.
+   analyzing CPU 0:
+     driver: intel_pstate
+     CPUs which run at the same hardware frequency: 0
+     CPUs which need to have their frequency coordinated by software: 0
+     maximum transition latency: 0.97 ms.
+     hardware limits: 800 MHz - 3.50 GHz
+     available cpufreq governors: performance, powersave
+     current policy: frequency should be within 800 MHz and 3.50 GHz.
+		     The governor "powersave" may decide which speed to use
+		     within this range.
+     current CPU frequency is 2.30 GHz.
+   ...
+   analyzing CPU 7:
+     driver: intel_pstate
+     CPUs which run at the same hardware frequency: 7
+     CPUs which need to have their frequency coordinated by software: 7
+     maximum transition latency: 0.97 ms.
+     hardware limits: 800 MHz - 3.50 GHz
+     available cpufreq governors: performance, powersave
+     current policy: frequency should be within 800 MHz and 3.50 GHz.
+		     The governor "powersave" may decide which speed to use
+		     within this range.
+     current CPU frequency is 2.57 GHz.
+   #+end_example
+
+* Mode-Setting Commands
+
+** to choose performance mode  
+   sudo echo performance > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+
+** to restore powersave mode
+   sudo echo powersave > /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor

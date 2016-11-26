@@ -38,6 +38,7 @@
     - file:mac-trackpad-ubuntu.org getting trackpad to work nicely on MacBookPro + ubuntu
     - file:xkb.org setting up keyboard with X11
     - [[file:xmonad-crib.org]] setting up xmonad look-ma-no-mouse window manager
+    - file:ubuntu-cpu-speed.org controlling cpu performance mode
   - d3 examples
     - file:d3/drag1/index.org d3 draggable object example - standalone
     - file:d3/drag2/index.org d3 draggable object example - inline
