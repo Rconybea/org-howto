@@ -7,8 +7,18 @@
 #+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
 
 * links
+  - [[file:#master-bedroom-av.org#][master bedroom A/V setup]]
   - [[https://support.myharmony.com/en-cn/companion][harmony remote setup]]
   - [[https://support.myharmony.com/en-us/harmony-experience-with-lutron-caseta-lights-and-serena-shades][lutron+harmony setup]] 
+
+* devices
+  | name     | brand    | model       | description                            |
+  |----------+----------+-------------+----------------------------------------|
+  | harmony  | logitech | harmony hub | can send commands using IR, wifi       |
+  |          |          |             | also to phillips Hue and Lutron bridge |
+  | tv       |          |             | plasma tv monitor                      |
+  | receiver | denon    |             |                                        |
+  | dvr      | arris    |             | DVR (rented from verizon)               |
 
 * living room A/V setup
   This page describes the living room audio/visual setup at 102 Fulton Street.
