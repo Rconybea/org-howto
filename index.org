@@ -34,12 +34,14 @@
     - [[file:orgpub/org-examples.org]] cookbook for org-mode publishing
     - [[file:living-room-av.org]] living room A/V setup
     - file:master-bedroom-av.org master bedroom A/V setup
-  - roly-laptop-14
+  - roly-laptop-14 setup
     - file:mac-screen-brightness.org controlling screen brightness on MacBookPro + ubuntu
     - file:mac-trackpad-ubuntu.org getting trackpad to work nicely on MacBookPro + ubuntu
     - file:xkb.org setting up keyboard with X11
     - [[file:xmonad-crib.org]] setting up xmonad look-ma-no-mouse window manager
     - file:ubuntu-cpu-speed.org controlling cpu performance mode
+  - octave examples
+    - file:octave/octave-crib.org octave examples
   - d3 examples
     - file:d3/drag1/index.org d3 draggable object example - standalone
     - file:d3/drag2/index.org d3 draggable object example - inline
