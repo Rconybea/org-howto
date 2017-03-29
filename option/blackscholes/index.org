@@ -55,7 +55,7 @@
    $$ delta: \frac{\partial C}{\partial S} = N(d_{1}) $$
    $$ gamma: \frac{N'(d1)}{S\sigma\sqrt{\tau}} $$
 * Prerequisites
-  As for [[file:~/proj/org-howto/d3/drag1/index.org#Prerequisites][d3 example /#1/]]
+  As for [[file:~/proj/org-howto/d3/drag1/index.org][d3 example /#1/]]
 
 * Procedure
 
