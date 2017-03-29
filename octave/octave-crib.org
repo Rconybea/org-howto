@@ -20,6 +20,7 @@
 #+html_head: <script type="text/javascript" src="http://www.pirilampo.org/styles/readtheorg/js/readtheorg.js"></script>
 #+html_head: <link rel="stylesheet" type="text/css" href="http://www.pirilampo.org/styles/readtheorg/css/htmlize.css"/>
 #+html_head: <link rel="stylesheet" type="text/css" href="http://www.pirilampo.org/styles/readtheorg/css/readtheorg.css"/>
+#+html_head: <link rel="stylesheet" type="text/css" href="../css/notebook.css" />
 #+html_link_home: ../../../index.html
 #+html_link_up: ../../../index.html
 
@@ -30,6 +31,11 @@
    #+begin_example
    $ octave
    octave>
+   #+end_example
+
+** comments
+   #+begin_example
+   octave> x=2 % everything after the % is ignored
    #+end_example
 
 ** directory commands from octave prompt
@@ -58,6 +64,21 @@
    #+begin_example
    octave> f(2)
    ans = 26
+   #+end_example
+
+** for-loops
+   #+begin_example
+   octave> fib=ones(1,11);
+   octave> fib(1)=0;
+   octave> for i=3:11
+   octave>   fib(i)=fib(i-1)+fib(i-2);
+   octave> endfor
+   octave> fib
+   #+end_example
+ 
+   #+begin_example
+   fib =
+      0   1   1   2   3   5   8  13  21  34  55
    #+end_example
 
 * Provenance
