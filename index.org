@@ -34,6 +34,7 @@
     - [[file:orgpub/org-examples.org]] cookbook for org-mode publishing
     - [[file:living-room-av.org]] living room A/V setup
     - file:master-bedroom-av.org master bedroom A/V setup
+	- [[file:network.org]] home network
   - roly-laptop-14 setup
     - file:mac-screen-brightness.org controlling screen brightness on MacBookPro + ubuntu
     - file:mac-trackpad-ubuntu.org getting trackpad to work nicely on MacBookPro + ubuntu
