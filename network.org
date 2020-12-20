@@ -1,0 +1,36 @@
+#+title: network setup
+# display all rows on startup
+#+startup: showall
+# don't display multiple *'s on the same line
+#+startup: hidestars
+#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/ext/org/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
+
+* devices
+  | name            | brand    | model    |        lan ip | 2nd ip              | http? | description                   |
+  |-----------------+----------+----------+---------------+---------------------+-------+-------------------------------|
+  | fios ont        |          |          |   192.168.9.1 | 192.168.9.100 (wan) | yes   | fibre<->ip converter          |
+  | fios lr         |          |          |               | 192.168.9.101 (wan) |       |                               |
+  | lr router       | asus     | RT-N66U  |   192.168.1.1 |                     | yes   | wired+wireless gateway        |
+  | bedroom router  | asus     | RT-N66U  |  192.168.1.30 | 192.168.0.2 (wlan)  |       | wireless router               |
+  | nas1            | synology | DS1512+  |   192.168.1.6 |                     |       | network attached storage      |
+  | office printer  | epson    | WF-3640  |   192.168.1.5 |                     |       | office printer (not working?) |
+  | roland mac mini |          |          |   192.168.1.9 |                     |       | office desktop                |
+  | office switch   | netgear  | GS724Tv4 | 192.168.1.239 |                     |       | managed switch                |
+
+* fios ont
+  - lan ip: =192.168.9.1=
+  - wireless disabled (SSID: =FiOS-VUU14=)
+  - password =admin/hero03bad=
+
+* lr router
+  - wan ip: =192.168.9.16=
+
+* nas1
+  - mac address =00:11:32:11:62:c7=
+  - serial # =C2KAN00034=
+  - version =4.0-2219= (as of 11/30/2014)
+  - =roland/$ocrates=
+  - =admin/kor0viev=
+  - contains 5x =ST2000NM0011 seagate 2TB SATA-600 7200rpm 3.5" drives
+	(ordered 7apr2012)
