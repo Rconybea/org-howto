@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="utf-8"/>
+    <title>my shopping list</title>
+    <script src="../../ext/vue/vue.js"></script>
+  </head>
+
+  <body>
+    <div class="container">
+      <h2>my shopping list</h2>
+      <div class="input-group">
+	<input placeholder="add shopping list item" type="text" class="js-new-item form-control">
+	<span class="input-group-btn">
+	  <button @click="addItem" class="js-add btn btn-default" type="button">Add</button>
+	</span>
+      </div>
+
+      <ul>
+	<li>
+	  <div class="checkbox">
+	    <label>
+	      <input class="js-item" name="list" type="checkbox">carrot(s)
+	    </label>
+	  </div>
+	</li>
+      </ul>
+  </body>
+</html>
