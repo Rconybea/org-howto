@@ -1,9 +1,9 @@
 #+title: black-scholes example
 #
 # org-publish options
-# H:2   controls section numbering.  
+# H:2   controls section numbering.
 #       number top-level and second-level headings only
-# ^:{}  require a_{b} before assuming that b should be subscripted.  
+# ^:{}  require a_{b} before assuming that b should be subscripted.
 #       without this option a_b will automatically subscript b.
 #+options: ^:{}
 #
@@ -12,13 +12,9 @@
 #
 # options used exclusively by the html exporter
 #+language: en
-#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/org/org-info.js
-#+html_mathjax: align:left indent:5em path:/ext/mathjax/MathJax.js
-#+html_head: <script src="/ext/jquery/jquery.js"></script>
-#+html_head: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-#+html_head: <script type="text/javascript" src="http://www.pirilampo.org/styles/lib/js/jquery.stickytableheaders.js"></script>
-#+html_head: <script type="text/javascript" src="http://www.pirilampo.org/styles/readtheorg/js/readtheorg.js"></script>
-#+html_head: <script type="text/javascript" src="/ext/d3/d3.js"></script>
+#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/orginfo/org-info.js
+#+html_mathjax: align:left indent:5em
+#+html_head: <script type="text/javascript" src="/ext/d3/d3.v3.min.js"></script>
 #+html_head: <script type="text/javascript" src="point.js"></script>
 #+html_head: <script type="text/javascript" src="fx.js"></script>
 #+html_head: <script type="text/javascript" src="xyscale.js"></script>
@@ -26,8 +22,6 @@
 #+html_head: <script type="text/javascript" src="normal.js"></script>
 #+html_head: <script type="text/javascript" src="blackscholes.js"></script>
 #+html_head: <script type="text/javascript" src="parametric-drag-example.js"></script>
-#+html_head: <link rel="stylesheet" type="text/css" href="http://www.pirilampo.org/styles/readtheorg/css/htmlize.css"/>
-#+html_head: <link rel="stylesheet" type="text/css" href="http://www.pirilampo.org/styles/readtheorg/css/readtheorg.css"/>
 #+html_head: <link rel="stylesheet" type="text/css" href="drag6.css" />
 #+html_link_home: ../../index.html
 #+html_link_up: ../../index.html
@@ -53,8 +47,28 @@
    We also have greeks:
    $$ delta: \frac{\partial C}{\partial S} = N(d_{1}) $$
    $$ gamma: \frac{N'(d1)}{S\sigma\sqrt{\tau}} $$
+
+* Demo
+  The div element ~#frame~ will appear below this line:
+
+   #+begin_export html
+   <div id="frame"></div>
+   <script type="text/javascript">
+     window.onload = function() { ex.start(this); }
+   </script>
+   #+end_export
+
 * Prerequisites
-  As for [[file:~/proj/org-howto/d3/drag1/index.org][d3 example /#1/]]
+  1. [[file:~/proj/org-howto/d3/drag1/index.org][d3 example /#1/]] prerequisites (D3, webserver)
+  2. ~jquery~ installed in ~$HTTP_ROOT/ext/jquery~:
+
+     #+begin_src sh :results output :exports both
+     ls -l $HOME/proj/public_html/org-howto/ext/jquery
+     #+end_src
+
+     #+RESULTS:
+     total 88
+     -rw-r--r-- 1 roland roland 87533 Oct 18  1991 jquery-3.7.1.min.js
 
 * Procedure
 
@@ -79,12 +93,3 @@
     </script>
     #+end_html
    #+end_example
-   The div element ~#frame~ will appear below this line:
-   #+begin_html
-   <div id="frame"></div>
-   <script type="text/javascript">
-     window.onload = function() { ex.start(this); }
-   </script>
-   #+end_html
-
-   

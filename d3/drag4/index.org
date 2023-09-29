@@ -1,9 +1,9 @@
 #+title: d3 draggable object example #4 -- parametric + improved selection identification
 #
 # org-publish options
-# H:2   controls section numbering.  
+# H:2   controls section numbering.
 #       number top-level and second-level headings only
-# ^:{}  require a_{b} before assuming that b should be subscripted.  
+# ^:{}  require a_{b} before assuming that b should be subscripted.
 #       without this option a_b will automatically subscript b.
 #+options: ^:{}
 #
@@ -12,8 +12,8 @@
 #
 # options used exclusively by the html exporter
 #+language: en
-#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/org/org-info.js
-#+html_head: <script type="text/javascript" src="/ext/d3/d3.js"></script>
+#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/orginfo/org-info.js
+#+html_head: <script type="text/javascript" src="/ext/d3/d3.v3.min.js"></script>
 #+html_head: <script type="text/javascript" src="point.js"></script>
 #+html_head: <script type="text/javascript" src="fx.js"></script>
 #+html_head: <script type="text/javascript" src="fx_view.js"></script>
@@ -28,6 +28,16 @@
   so that we get smooth dragging behavior
 
   - source :: org-mode source for this page is here: file:index-src.org
+
+* Demo
+  The div element ~#frame~ will appear below this line (only when exported to html):
+
+  #+begin_export html
+  <div id="frame"></div>
+  <script type="text/javascript">
+    window.onload = function() { ex.start(this); }
+  </script>
+  #+end_export
 
 * Prerequisites
 
@@ -49,125 +59,126 @@
      /* given a line L through points pt1,pt2,
       * find the point p on the line such that the line through p,target_pt
       * is perpendicular to L
-      * 
+      *
       * point = {x,y}
       * target_pt, pt1, pt2 :: point
       * return :: point
       */
      ex.find_perpendicular = function(target_pt, pt1, pt2, clip_flag)
      {
-	 /*
-	  *                               * (x2,y2) = pt2
-	  *                             /
-	  *                           /
-	  *                         /  L
-	  *                   p   /
-	  *                     *
-	  *                   /   \  M
-	  *                 /       \
-	  * pt1 = (x1,y1) *           \
-	  *                            * (x0,y0) pt0
-	  *
-	  * parameterise the line L through pt1,pt2:
-	  *    L comprises the points L(t) = pt1 + t*(pt2-pt1)
-	  * given a particular point p = L(t0),  consider the line M
-	  * through L(t0) and (x0,y0)
-	  *    M comprises the points M(s) = pt0 + s*(L(t0)-pt0)
-	  *  
-	  * we seek t such that the line M(s) through L(t) and (x0,y0)
-	  * is perpendicular to L.
-	  *
-	  * A vector lv parallel to L is (pt2-pt1).
-	  *   lv = (x2-x1,y2-y1)
-	  * A vector mv parallel to the line thru L(t) 
-	  *   L(t) = pt1 + t*(pt2-pt1) = (1-t)*pt1 + t*pt2
-	  * and pt0 is:
-	  *   mv = L(t)-pt0
-	  *      = ((1-t)*x1 + t*x2) - x0,
-	  *         (1-t)*y1 + t*y2) - y0)
-	  * 
-	  *  lv . mvT
-	  *      = (x2-x1)*[(1-t)*x1 + t*x2 - x0]
-	  *         + (y2-y1)*[(1-t)*y1 + t*y2 - y0]
-	  * 
-	  * lv. mvT is 0 when lv and mv are _|_:
-	  *   (x2-x1)*[(1-t)*x1 + t*x2 - x0] = -(y2-y1)*[(1-t)*y1 + t*y2 - y0]
-	  *   (x2-x1)*[-t*x1 + t*x2 + x1-x0] = -(y2-y1)*[-t*y1 + t*y2 + y1-y0]
-	  *   t*(x2-x1)*[-x1 + x2] + (x2-x1)*(x1-x0) = t*[-(y2-y1)]*[-y1 + y2] + -(y2-y1)*(y1-y0)
-	  *   t*(x2-x1)^2 + t*(y2-y1)^2 = -(x2-x1)*(x1-x0) - (y2-y1)*(y1-y0)
-	  *   
-	  *            (x2-x1)*(x1-x0) + (y2-y1)*(y1-y0)
-	  *   t = -1 * ---------------------------------
-	  *                 (x2-x1)^2 + (y2-y1)^2
-	  *
-	  *   L(t) = pt1 + t*(pt2 - pt1)
-	  */
-	 var pt0 = target_pt;
+     /*
+      *                               * (x2,y2) = pt2
+      *                             /
+      *                           /
+      *                         /  L
+      *                   p   /
+      *                     *
+      *                   /   \  M
+      *                 /       \
+      * pt1 = (x1,y1) *           \
+      *                            * (x0,y0) pt0
+      *
+      * parameterise the line L through pt1,pt2:
+      *    L comprises the points L(t) = pt1 + t*(pt2-pt1)
+      * given a particular point p = L(t0),  consider the line M
+      * through L(t0) and (x0,y0)
+      *    M comprises the points M(s) = pt0 + s*(L(t0)-pt0)
+      *
+      * we seek t such that the line M(s) through L(t) and (x0,y0)
+      * is perpendicular to L.
+      *
+      * A vector lv parallel to L is (pt2-pt1).
+      *   lv = (x2-x1,y2-y1)
+      * A vector mv parallel to the line thru L(t)
+      *   L(t) = pt1 + t*(pt2-pt1) = (1-t)*pt1 + t*pt2
+      * and pt0 is:
+      *   mv = L(t)-pt0
+      *      = ((1-t)*x1 + t*x2) - x0,
+      *         (1-t)*y1 + t*y2) - y0)
+      *
+      *  lv . mvT
+      *      = (x2-x1)*[(1-t)*x1 + t*x2 - x0]
 
-	 var dx2 = pt2.x - pt1.x;
-	 var dy2 = pt2.y - pt1.y;
+      *         + (y2-y1)*[(1-t)*y1 + t*y2 - y0]
+      *
+      * lv. mvT is 0 when lv and mv are _|_:
+      *   (x2-x1)*[(1-t)*x1 + t*x2 - x0] = -(y2-y1)*[(1-t)*y1 + t*y2 - y0]
+      *   (x2-x1)*[-t*x1 + t*x2 + x1-x0] = -(y2-y1)*[-t*y1 + t*y2 + y1-y0]
+      *   t*(x2-x1)*[-x1 + x2] + (x2-x1)*(x1-x0) = t*[-(y2-y1)]*[-y1 + y2] + -(y2-y1)*(y1-y0)
+      *   t*(x2-x1)^2 + t*(y2-y1)^2 = -(x2-x1)*(x1-x0) - (y2-y1)*(y1-y0)
+      *
+      *            (x2-x1)*(x1-x0) + (y2-y1)*(y1-y0)
+      *   t = -1 * ---------------------------------
+      *                 (x2-x1)^2 + (y2-y1)^2
+      *
+      *   L(t) = pt1 + t*(pt2 - pt1)
+      */
+     var pt0 = target_pt;
 
-	 var dx1 = pt1.x - pt0.x;
-	 var dy1 = pt1.y - pt0.y;
+     var dx2 = pt2.x - pt1.x;
+     var dy2 = pt2.y - pt1.y;
 
-	 var t = -((dx2*dx1) + (dy2*dy1)) / (dx2*dx2 + dy2*dy2);
+     var dx1 = pt1.x - pt0.x;
+     var dy1 = pt1.y - pt0.y;
 
-	 /* if clip_flag is true:
-	  * constrain t to [0,1]
-	  */
-	 if(clip_flag) {
-	     if(t < 0.0)
-		 t = 0.0;
-	     if(t > 1.0)
-		 t = 1.0;
-	 }
+     var t = -((dx2*dx1) + (dy2*dy1)) / (dx2*dx2 + dy2*dy2);
 
-	 var xt = pt1.x + t * dx2;
-	 var yt = pt1.y + t * dy2;
+     /* if clip_flag is true:
+      * constrain t to [0,1]
+      */
+     if(clip_flag) {
+         if(t < 0.0)
+         t = 0.0;
+         if(t > 1.0)
+         t = 1.0;
+     }
 
-	 return {x: xt, y: yt};
+     var xt = pt1.x + t * dx2;
+     var yt = pt1.y + t * dy2;
+
+     return {x: xt, y: yt};
      } /*find_perpendicular*/
    #+end_example
 
 ** Upgrade ~fx_view.update_select~ to use a smoothly-varying function of mouse coordinates
-   
+
    #+begin_example
     /* update selection circle
      * for an event at Point pt
      */
     fx_view.fx_update_select
-	= function(p, target_pt_v)
+    = function(p, target_pt_v)
     {
-	/* find point on {x,f(x)} that's closest to 
-	 * mouse location (i.e. to d3.event)
-	 */
-	var mid_pt_ix
-	    = pt.find_closest_ix(p, target_pt_v);
+    /* find point on {x,f(x)} that's closest to
+     * mouse location (i.e. to d3.event)
+     */
+    var mid_pt_ix
+        = pt.find_closest_ix(p, target_pt_v);
 
-	/* establish three neighboring points;
-	 * ideally around best_px_ix,  but stay within target_pt_v
-	 */
-	if(mid_pt_ix - 1 < 0)
-	    ++mid_pt_ix;
-	if(mid_pt_ix + 1 >= target_pt_v.length)
-	    --mid_pt_ix;
+    /* establish three neighboring points;
+     * ideally around best_px_ix,  but stay within target_pt_v
+     */
+    if(mid_pt_ix - 1 < 0)
+        ++mid_pt_ix;
+    if(mid_pt_ix + 1 >= target_pt_v.length)
+        --mid_pt_ix;
 
-	var pt0 = target_pt_v[mid_pt_ix - 1];
-	var pt1 = target_pt_v[mid_pt_ix];
-	var pt2 = target_pt_v[mid_pt_ix + 1];
+    var pt0 = target_pt_v[mid_pt_ix - 1];
+    var pt1 = target_pt_v[mid_pt_ix];
+    var pt2 = target_pt_v[mid_pt_ix + 1];
 
-	/* find best points on line segments [pt0,pt1] and [pt1,pt2] respectively */
-	var perp_lo_pt = pt.find_perpendicular(d3.event, pt0, pt1, true /*clip_flag*/);
-	var perp_hi_pt = pt.find_perpendicular(d3.event, pt1, pt2, true /*clip_flag*/);
+    /* find best points on line segments [pt0,pt1] and [pt1,pt2] respectively */
+    var perp_lo_pt = pt.find_perpendicular(d3.event, pt0, pt1, true /*clip_flag*/);
+    var perp_hi_pt = pt.find_perpendicular(d3.event, pt1, pt2, true /*clip_flag*/);
 
-	/* choose nearest of perp_lo_pt and perp_hi_pt */
-	var perp_pt = pt.find_closest(d3.event, [perp_lo_pt, perp_hi_pt]);
-	
-	fx_view.fx_select_circle
-	    .attr("cx", perp_pt.x)
-	    .attr("cy", perp_pt.y);
+    /* choose nearest of perp_lo_pt and perp_hi_pt */
+    var perp_pt = pt.find_closest(d3.event, [perp_lo_pt, perp_hi_pt]);
+
+    fx_view.fx_select_circle
+        .attr("cx", perp_pt.x)
+        .attr("cy", perp_pt.y);
     } /*fx_update_select*/
-  #+end_example  
+  #+end_example
 
 ** Reuse ~parametric-drag-example.js~ from example /#3/
 
@@ -194,10 +205,3 @@
     </script>
     #+end_html
   #+end_example
-  The div element ~#frame~ will appear below this line:
-  #+begin_html
-  <div id="frame"></div>
-  <script type="text/javascript">
-    window.onload = function() { ex.start(this); }
-  </script>
-  #+end_html

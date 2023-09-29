@@ -1,9 +1,9 @@
 #+title: d3 draggable object example #6 -- parametric + tangent line + axes
 #
 # org-publish options
-# H:2   controls section numbering.  
+# H:2   controls section numbering.
 #       number top-level and second-level headings only
-# ^:{}  require a_{b} before assuming that b should be subscripted.  
+# ^:{}  require a_{b} before assuming that b should be subscripted.
 #       without this option a_b will automatically subscript b.
 #+options: ^:{}
 #
@@ -12,8 +12,8 @@
 #
 # options used exclusively by the html exporter
 #+language: en
-#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/org/org-info.js
-#+html_head: <script type="text/javascript" src="/ext/d3/d3.js"></script>
+#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/ext/orginfo/org-info.js
+#+html_head: <script type="text/javascript" src="/ext/d3/d3.v3.min.js"></script>
 #+html_head: <script type="text/javascript" src="point.js"></script>
 #+html_head: <script type="text/javascript" src="fx.js"></script>
 #+html_head: <script type="text/javascript" src="xyscale.js"></script>
@@ -30,6 +30,17 @@
 
   - source :: org-mode source for this page is [[file:index-src.org][here]]
 
+* Demo
+
+  The div element ~#frame~ will appear below this line:
+
+   #+begin_export html
+   <div id="frame"></div>
+   <script type="text/javascript">
+     window.onload = function() { ex.start(this); }
+   </script>
+   #+end_export
+
 * Prerequisites
 
   As for examples [[file:../drag1/index.org][/#1/]], [[file://drag2/index.org][/#2/]], [[file:~/proj/org-howto/d3/drag3/index.org][/#3/]], [[file:~/proj/org-howto/d3/drag4/index.org][/#4/]], [[file:~/proj/org-howto/d3/drag5/index.org][/#5/]]
@@ -43,19 +54,19 @@
   - [[file:fx.js][fx.js]] :: specifies target function and derivative (unchanged from /#5/)
   - [[file:fx_view.js][fx_view.js]] :: visualization code (edited as shown below)
   - [[file:parametric-drag-example.js][parametric-drag-example.js]] :: setup code (unchanged from /#5/)
-		 
+
 ** provide axis styling
    Edit ~css/drag6.css~:
    #+begin_example
     .axis path,
     .axis line {
-	fill: none;
-	stroke: black;
+    fill: none;
+    stroke: black;
     }
 
     .axis text {
-	font-family: sans-serif;
-	font-size: 11px;
+    font-family: sans-serif;
+    font-size: 11px;
     }
    #+end_example
 
@@ -75,16 +86,16 @@
      */
     fx_view.draw_x_axis = function(box_pt, box, xyscale)
     {
-	var x_axis = (d3.svg.axis()
-		      .scale(xyscale.xscale)
-		      .orient("bottom"));
+    var x_axis = (d3.svg.axis()
+              .scale(xyscale.xscale)
+              .orient("bottom"));
 
-	fx_view.box.append("svg:g")
-	    .attr("class", "axis")
-	    .attr("transform", "translate(0," + (0.5 * box_pt.y) + ")")
-	    .call(x_axis);
+    fx_view.box.append("svg:g")
+        .attr("class", "axis")
+        .attr("transform", "translate(0," + (0.5 * box_pt.y) + ")")
+        .call(x_axis);
 
-	return x_axis;
+    return x_axis;
     } /*draw_x_axis*/
    #+end_src
    #+begin_src js
@@ -93,16 +104,16 @@
      */
     fx_view.draw_y_axis = function(box_pt, box, xyscale)
     {
-	var y_axis = (d3.svg.axis()
-		      .scale(xyscale.yscale)
-		      .orient("left"));
+    var y_axis = (d3.svg.axis()
+              .scale(xyscale.yscale)
+              .orient("left"));
 
-	box.append("svg:g")
-	    .attr("class", "axis")
-	    .attr("transform", "translate(" + (0.5 * box_pt.x) + ",0)")
-	    .call(y_axis);
+    box.append("svg:g")
+        .attr("class", "axis")
+        .attr("transform", "translate(" + (0.5 * box_pt.x) + ",0)")
+        .call(y_axis);
 
-	return y_axis
+    return y_axis
     } /*draw_y_axis*/
    #+end_src
    Call the new axis-creating functions from ~fx_view.draw~:
@@ -114,24 +125,24 @@
      */
     fx_view.draw = function(parent_id, box_pt, target_pt_v, xyscale)
     {
-	/* create an svg bounding box, to contain interactive drawing area */
-	fx_view.box = fx_view.draw_bounding_box(parent_id, box_pt);
+    /* create an svg bounding box, to contain interactive drawing area */
+    fx_view.box = fx_view.draw_bounding_box(parent_id, box_pt);
 
-	/* border, so bounding box is visible */
-	fx_view.border = fx_view.draw_border(box_pt, fx_view.box);
+    /* border, so bounding box is visible */
+    fx_view.border = fx_view.draw_border(box_pt, fx_view.box);
 
-	/* create axes.. */
-	fx_view.draw_x_axis(box_pt, fx_view.box, xyscale);
-	fx_view.draw_y_axis(box_pt, fx_view.box, xyscale);
+    /* create axes.. */
+    fx_view.draw_x_axis(box_pt, fx_view.box, xyscale);
+    fx_view.draw_y_axis(box_pt, fx_view.box, xyscale);
 
-	/* create path representing our target function f(x) */
-	fx_view.fx_path = fx_view.draw_fx_path(fx_view.box, target_pt_v);
+    /* create path representing our target function f(x) */
+    fx_view.fx_path = fx_view.draw_fx_path(fx_view.box, target_pt_v);
 
-	fx_view.fx_update_tangent_fn(xyscale.xscale.invert(0.5 * box_pt.x),
-				     box_pt, xyscale);
+    fx_view.fx_update_tangent_fn(xyscale.xscale.invert(0.5 * box_pt.x),
+                     box_pt, xyscale);
 
-	fx_view.fx_update_select_circle(pt.find_closest(pt.scale_pt(0.5, box_pt),
-							target_pt_v));
+    fx_view.fx_update_select_circle(pt.find_closest(pt.scale_pt(0.5, box_pt),
+                            target_pt_v));
     } /*draw*/
    #+end_src
 ** Insert html fragment to invoke our interactive javascript code
@@ -144,10 +155,3 @@
     </script>
     #+end_html
    #+end_example
-   The div element ~#frame~ will appear below this line:
-   #+begin_html
-   <div id="frame"></div>
-   <script type="text/javascript">
-     window.onload = function() { ex.start(this); }
-   </script>
-   #+end_html

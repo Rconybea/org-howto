@@ -1,9 +1,9 @@
 #+title: miscellaneous how-tos
 #
 # org-publish options
-# H:2   controls section numbering.  
+# H:2   controls section numbering.
 #       number top-level and second-level headings only
-# ^:{}  require a_{b} before assuming that b should be subscripted.  
+# ^:{}  require a_{b} before assuming that b should be subscripted.
 #       without this option a_b will automatically subscript b.
 #+options: ^:{}
 #
@@ -12,47 +12,44 @@
 #
 # options used exclusively by the html exporter
 #+language: en
-#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/ext/org/org-info.js
+#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/ext/orginfo/org-info.js
 #+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
 #+html_link_home: index.html
 
 * Introduction
-  how-to articles published using ~org-publish~ to =$HOME/public_html/howto=.
-  Serve with 
+  how-to articles published using ~org-publish~ to =$HOME/proj/public_html/org-howto=.
+  Serve on port =8080= with
   #+begin_example
-  (cd ~/public_html && python -m SimpleHTTPServer 8080)
+  python3 -m http.server 8080 --directory ~/proj/public_html/org-howto
   #+end_example
-  also served from =localhost:80= via =apache=
-  Sandbox on ~roly-laptop-14~ (ubuntu), in ~$HOME/proj/org-howto~;
-  publish to ~/Dropbox/public_html~ via ~org-publish~ in =~/.emacs= (project howto)
-
-** sources
-   ~org-mode~ source is here: file:index-src.org 
 
 * Contents
-  - uncategorized
-    - [[file:orgpub/org-examples.org]] cookbook for org-mode publishing
-    - [[file:living-room-av.org]] living room A/V setup
-    - file:master-bedroom-av.org master bedroom A/V setup
-	- [[file:network.org]] home network
-  - roly-laptop-14 setup
-    - file:mac-screen-brightness.org controlling screen brightness on MacBookPro + ubuntu
-    - file:mac-trackpad-ubuntu.org getting trackpad to work nicely on MacBookPro + ubuntu
-    - file:xkb.org setting up keyboard with X11
-    - [[file:xmonad-crib.org]] setting up xmonad look-ma-no-mouse window manager
-    - file:ubuntu-cpu-speed.org controlling cpu performance mode
-  - octave examples
-    - file:octave/octave-crib.org octave examples
+  - org mode cookbook
+    - [[file:orgpub/org-examples.org][org-examples]] cookbook for org-mode publishing
   - d3 examples
-    - file:d3/drag1/index.org d3 draggable object example - standalone
-    - file:d3/drag2/index.org d3 draggable object example - inline
-    - file:d3/drag3/index.org d3 draggable object example - parametric
+    - [[file:d3/drag1/index.org][drag.1]] d3 draggable object example - standalone
+    - [[file:d3/drag2/index.org][drag.2]] d3 draggable object example - inline
+    - [[file:d3/drag3/index.org][drag.3]] d3 draggable object example - parametric
     - [[file:d3/drag4/index.org][drag.4]] d3 draggable object example - parametric + smooth selection
     - [[file:d3/drag5/index.org][drag.5]] d3 draggable object example - parametric + tangent
     - [[file:d3/drag6/index.org][drag.6]] d3 draggable object example - parametric + axes
     - [[file:d3/drag7/index.org][drag.7]] d3 draggable object example - parametric + tangent + quadratic *[WIP]*
     - [[file:option/blackscholes/index.org][blackscholes]] interactive option pricing example *[WIP]*
+  - octave examples
+    - file:octave/octave-crib.org octave examples
+  - household (very old)
+    - [[file:living-room-av.org]] living room A/V setup
+    - file:master-bedroom-av.org master bedroom A/V setup
+    - [[file:network.org]] home network
+  - roly-laptop-14 setup (very old)
+    - file:mac-screen-brightness.org controlling screen brightness on MacBookPro + ubuntu
+    - file:xkb.org setting up keyboard with X11
+    - [[file:xmonad-crib.org]] setting up xmonad look-ma-no-mouse window manager
+    - file:ubuntu-cpu-speed.org controlling cpu performance mode
 
 * Todo
   - add fx_utils.js.  put ex.eval_fn(), ex.make_target_pt_v() in it
   - in fx_utils.js,  add linear_transform(),  parameterizing ex.pt2screen()
+
+* .org source
+   ~org-mode~ source here: [[file:index-src.org][index-src.org]]
