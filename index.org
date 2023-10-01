@@ -12,8 +12,8 @@
 #
 # options used exclusively by the html exporter
 #+language: en
-#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/ext/orginfo/org-info.js
-#+html_head: <link rel="stylesheet" type="text/css" href="css/notebook.css" />
+#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+#+html_head: <link rel="stylesheet" type="text/css" href="/web/css/notebook.css" />
 #+html_link_home: index.html
 
 * Introduction
@@ -24,6 +24,7 @@
   #+end_example
 
 * Contents
+  - [[file:env/development-environment.org][c++ development environment]]
   - org mode cookbook
     - [[file:orgpub/org-examples.org][org-examples]] cookbook for org-mode publishing
   - d3 examples
@@ -37,19 +38,6 @@
     - [[file:option/blackscholes/index.org][blackscholes]] interactive option pricing example *[WIP]*
   - octave examples
     - file:octave/octave-crib.org octave examples
-  - household (very old)
-    - [[file:living-room-av.org]] living room A/V setup
-    - file:master-bedroom-av.org master bedroom A/V setup
-    - [[file:network.org]] home network
-  - roly-laptop-14 setup (very old)
-    - file:mac-screen-brightness.org controlling screen brightness on MacBookPro + ubuntu
-    - file:xkb.org setting up keyboard with X11
-    - [[file:xmonad-crib.org]] setting up xmonad look-ma-no-mouse window manager
-    - file:ubuntu-cpu-speed.org controlling cpu performance mode
-
-* Todo
-  - add fx_utils.js.  put ex.eval_fn(), ex.make_target_pt_v() in it
-  - in fx_utils.js,  add linear_transform(),  parameterizing ex.pt2screen()
 
 * .org source
    ~org-mode~ source here: [[file:index-src.org][index-src.org]]

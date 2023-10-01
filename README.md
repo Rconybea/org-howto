@@ -1,6 +1,7 @@
 # org-howto
-emacs org git repo with howto articles.
-see github://Rconybea/org-howto for snapshot of generated html tree
+Emacs org git repo with howto articles.
+Published regularly to github pages here: [[https://rconybea.github.io]]
+see [[github://Rconybea/org-howto]] for snapshot of generated html tree
 
 publish content here from emacs, using `M-x org-publish-project org-howto`
 see html on roly-laptop-14 at this url: http://localhost/howto
