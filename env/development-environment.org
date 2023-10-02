@@ -341,3 +341,18 @@
         
         Docker image contains only python and our html tree,  so much smaller than typical image.
          
+*** github + custom image + docker + github action
+
+    see
+    - [[https://blog.bitsrc.io/using-github-container-registry-in-practice-295677c6f65e]]
+    - [[https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry]]
+    - [[https://docs.github.com/en/authentication/keeping-your-account-and-data-secure/managing-your-personal-access-tokens]]
+
+    plan:
+    1. create docker-example repo
+    2. hello world as docker container (using dockerfile)
+
+    Note: github maps GITHUB_WORKSPACE on runner to /github/workspace directory within container.
+    github actions can refer to ${{ github.workspace }}
+    
+       

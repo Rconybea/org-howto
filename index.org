@@ -17,14 +17,20 @@
 #+html_link_home: index.html
 
 * Introduction
-  how-to articles published using ~org-publish~ to =$HOME/proj/public_html/org-howto=.
-  Serve on port =8080= with
+  How-to articles maintained at [[https://github.com/Rconybea/org-howto]]
+
+  ~org-publish~ generates html tree in =$HOME/proj/public_html/org-howto=.
+
+  Recent snapshots available from github pages: [[https://rconybea.github.io/web]]
+
+  Can for example serve locally on port =8080=:
   #+begin_example
   python3 -m http.server 8080 --directory ~/proj/public_html/org-howto
   #+end_example
 
 * Contents
   - [[file:env/development-environment.org][c++ development environment]]
+  - [[file:env/windows11-setup.org][windows11 setup]]
   - org mode cookbook
     - [[file:orgpub/org-examples.org][org-examples]] cookbook for org-mode publishing
   - d3 examples
