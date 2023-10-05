@@ -2,7 +2,7 @@
 # org-publish options
 # ^:{}  require a_{b} before assuming that b should be subscripted.
 #       without this option a_b will automatically subscript b.
-#+options: ^:{}
+#+options: ^:{} toc:4
 #
 # emacs-specific options
 #+startup: showall
@@ -38,16 +38,14 @@
    | scheme 1 | ubuntu    | [[https://github.com/Rconybea/hello-example][hello-example]]         | (same)                 |
    | scheme 2 | ubuntu    | [[https://github.com/Rconybea/docker-action-example][docker-action-example]] | (same)                 |
    | scheme 3 | container | [[https://github.com/Rconybea/docker-nix-hello][docker-nix-hello]]      | [[https://github.com/Rconybea/docker-action-example2][docker-action-example2]] |
-   | scheme 4 | container | [[https://github.com/Rconybea/docker-cpp-builder][docker-cpp-builder]]    |                        |
-   |          |           |                       |                        |
-
+   | scheme 4 | container | [[https://github.com/Rconybea/docker-cpp-builder][docker-cpp-builder]]    | [[https://github.com/rconybea/docker-action-example3][docker-action-example3]] |
 
 * Progressive Implementation
 
   We'll present several progressive CI-with-github examples,
   that converge on goals above.
 
-** Scheme 1
+** Scheme 1 - github build using base o/s platform
 
 *** Preliminaries
 
@@ -175,7 +173,7 @@ source for ~Scheme 1~ is on github here: [[https://github.com/Rconybea/hello-exa
       github will automatically trigger a build whenever new sources are pushed.
       build will run the contents of ~steps~ in order.
 
-** Scheme 2
+** Scheme 2 - docker build using base o/s platform
 
    Instead of building on github-provided base ubuntu platform,
    use github-built docker container.
@@ -204,7 +202,7 @@ source for ~Scheme 1~ is on github here: [[https://github.com/Rconybea/hello-exa
 
 **** Source
 
-     entrypoint.sh:
+     ~entrypoint.sh~:
      #+begin_src sh
        #!/usr/bin/env bash
        echo "Hello $1"
@@ -214,7 +212,7 @@ source for ~Scheme 1~ is on github here: [[https://github.com/Rconybea/hello-exa
 
 **** Docker Container
 
-     DockerFile:
+     ~DockerFile~:
      #+begin_example
      # base container image
      FROM ubuntu:22.04
@@ -232,7 +230,7 @@ source for ~Scheme 1~ is on github here: [[https://github.com/Rconybea/hello-exa
      that operates by invoking docker image
      (automagically built from enclosed ~DockerFile~)
 
-     action.yml:
+     ~action.yml~:
 
      #+begin_src yaml
      name: 'Hello World'
@@ -284,17 +282,15 @@ source for ~Scheme 1~ is on github here: [[https://github.com/Rconybea/hello-exa
      - ~rconybea/docker-action-example~ is our github repo,
      - ~v1~ is target github tag
 
-** Scheme 3
+** Scheme 3 - custom docker container via nix (no c++)
 
 *** Preliminaries
 
 Source for ~Scheme 3~ uses two repos:
 
-Custom container build here: [[https:://github.com/Rconybea/docker-nix-hello]]
-Workflow using container here: [[https://github.com/Rconybea/docker-action-example2]]
-See also: https://blog.bitsrc.io/using-github-container-registry-in-practice-295677c6f65e]]
-
-Prepare minimal custom docker container using a nix flake.
+- Custom container build here: [[https:://github.com/Rconybea/docker-nix-hello]]
+- Workflow using container here: [[https://github.com/Rconybea/docker-action-example2]]
+- See also: https://blog.bitsrc.io/using-github-container-registry-in-practice-295677c6f65e]]
 
 **** Directory structure
 
@@ -312,8 +308,10 @@ Prepare minimal custom docker container using a nix flake.
      #+end_example
 
 **** Source
-     flake.nix:
-     #+begin_example
+Prepare minimal custom docker container using a nix flake.
+
+~flake.nix~:
+     #+begin_src nix
      {
        description = "hello world";
 
@@ -363,7 +361,7 @@ Prepare minimal custom docker container using a nix flake.
            };
          };
      }
-     #+end_example
+     #+end_src
 
 **** Build Container + Upload to github
 
@@ -423,3 +421,142 @@ Prepare minimal custom docker container using a nix flake.
                  - name: get output time
                    run: echo "The time was ${{ steps.hello.outputs.time }}"
      #+end_src
+
+** Scheme 4 - custom docker container via nix (with gcc)
+
+Source for ~Scheme 4~ in two repos:
+
+- Custom container build here: [[https://github.com/Rconybea/docker-cpp-builder]]
+- Workflow using container here: [[https://github.com/Rconybea/docker-action-example3]]
+
+**** Directory structure
+
+#+begin_example
+docker-cpp-builder
++- flake.nix
+\- flake.lock    # automatically created by nix
+#+end_example
+
+#+begin_example
+docker-action-example3
++- .github
+|  \- workflows
+|     \- main.yml
++- Makefile
++- hello.cpp
+#+end_example
+
+**** Source
+Prepare custom docker container to deliver build stack (=gcc=, =cmake=, ...)
+
+~flake.nix~:
+#+begin_src nix
+{
+  description = "docker c++ builder (using nix)";
+
+  # dependencies
+  inputs = rec {
+    nixpkgs.url = "github:nixos/nixpkgs/23.05";
+  };
+
+  outputs = { self, nixpkgs } :
+    let
+      system = "x86_64-linux";
+      pkgs = import nixpkgs { inherit system; };
+
+      docker_builder_deriv =
+        pkgs.dockerTools.buildLayeredImage {
+          name = "docker-cpp-builder";
+          tag = "v3";
+          contents = [ self.packages.${system}.git
+                       self.packages.${system}.cacert
+                       self.packages.${system}.gnumake
+                       self.packages.${system}.gcc
+                       self.packages.${system}.binutils
+                       self.packages.${system}.bash
+                       # for /bin/tail,  assumed by github actions when invoking a docker contianer
+                       self.packages.${system}.coreutils ];
+        };
+
+    in rec {
+      packages.${system} = {
+        default = docker_builder_deriv;
+
+        docker_builder = docker_builder_deriv;
+
+        git = pkgs.git;
+        cacert = pkgs.cacert;
+        gnumake = pkgs.gnumake;
+        gcc = pkgs.gcc;
+        binutils = pkgs.binutils;
+        bash = pkgs.bash;
+        coreutils = pkgs.coreutils;
+      };
+    };
+}
+
+#+end_src
+
+**** Build Container + Upload to github
+
+Instructions are the same as for Scheme 3,  but using =~/proj/docker-cpp-builder= instead of =~/proj/docker-nix-hello=
+
+#+begin_src sh
+  cd ~/proj/docker-cpp-builder
+  git tag v1
+  nix build
+  docker load <~/proj/docker-cpp-builder/result
+  docker image tag docker-cpp-builder:v1 ghcr.io/rconybea/rconybea/docker-cpp-builder:v1
+  docker image push ghcr.io/rconybea/docker-cpp-builder:v1
+#+end_src
+
+After uploading package (docker image) for gcc builder  appears here: [[https://github.com/Rconybea?tab=packages]]:
+
+**** Workflow using Custom Container
+
+in ~docker-action-example3/.github/workflows/main.yml~:
+#+begin_src yaml
+  on: [push]
+
+  env:
+    # personal accesss token (using automatically-supplied GIT_TOKEN) with read access to public repos
+    GIT_USER: rconybea
+
+  jobs:
+    build_job:
+      name: compile hello world, using prepared docker container
+      runs-on: ubuntu-latest
+      container:
+        image: ghcr.io/rconybea/docker-cpp-builder:v3
+      steps:
+        - name: checkout
+          run:
+            # not using usual checkout action: bc complications from within container
+            GIT_SSL_NO_VERIFY=true git clone https://${{env.GIT_USER}}:${{env.GIT_TOKEN}}@github.com/rconybea/docker-action-example3.git
+
+        - name: compile
+          run:
+            # make,g++ will run in container..
+            make -C docker-action-example3
+
+        - name: hello
+          run:
+            ./docker-action-example3/hello Roland
+            #${{github.workspace}}/hello Roland
+
+#+end_src
+
+Note: in non-container build we can checkout code with something like:
+#+begin_src yaml
+  steps:
+  - name: checkout
+  - uses: rconybea/my-repo@my-git-tag
+#+end_src
+
+Unfortunately that doesn't work out-of-the-box when we use a container for build,
+because of a permissioning problem.   Spent some time on various internet-advised workarounds,
+before settling on the solution above:  including =git= in custom docker image,  and checking source
+out from inside the container.
+
+We need to set ~GIT_SSL_NO_VERIFY~ to prevent an obscure error (passed along from SSL) mentioning an `unrecognized scheme`.
+Presumably there's a problem authenticating github.com's certificate
