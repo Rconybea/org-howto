@@ -29,7 +29,7 @@
         w11_sshd
         subgraph cluster_wsl {
           label="wsl2";
-          wsl_sshd;
+          wsl_sshd [tooltip="listens on port 2022 to avoid collision with windows sshd"];
         }
       }
       terminal -> w11_sshd [label="ssh Rcony@roly-desktop-23"];

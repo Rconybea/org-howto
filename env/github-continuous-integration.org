@@ -1,0 +1,425 @@
+#+title: github continuous integration
+# org-publish options
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
+#+language: en
+# #+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# #+html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+# +html_link_home: index.html
+# +html_link_up: development-environment.html
+
+* Motivation
+
+    We want to use a custom (~docker~) container with ~github~ actions,  and prepare it using ~nix~.
+
+    Several advantages:
+
+    1. control over build software (e.g. gcc version).
+
+    2. reproducibility -- nix-to-container pipeline guarantees perfect reproducibility
+
+    3. flexibility -- container can include prepared software that isn't available on ubuntu
+
+    4. size -- container with no excess baggage
+
+* Contents
+
+  repos under https://github.com/Rconybea
+
+   | scheme   | builder   | src-repo              | action-repo            |
+   |----------+-----------+-----------------------+------------------------|
+   | scheme 1 | ubuntu    | [[https://github.com/Rconybea/hello-example][hello-example]]         | (same)                 |
+   | scheme 2 | ubuntu    | [[https://github.com/Rconybea/docker-action-example][docker-action-example]] | (same)                 |
+   | scheme 3 | container | [[https://github.com/Rconybea/docker-nix-hello][docker-nix-hello]]      | [[https://github.com/Rconybea/docker-action-example2][docker-action-example2]] |
+   | scheme 4 | container | [[https://github.com/Rconybea/docker-cpp-builder][docker-cpp-builder]]    |                        |
+   |          |           |                       |                        |
+
+
+* Progressive Implementation
+
+  We'll present several progressive CI-with-github examples,
+  that converge on goals above.
+
+** Scheme 1
+
+*** Preliminaries
+
+source for ~Scheme 1~ is on github here: [[https://github.com/Rconybea/hello-example]]
+
+**** Directory structure
+
+   #+begin_example
+   hello-example
+   +- .github
+   |  \- workflow
+   |     \- main.yml
+   +- CMakeLists.txt
+   \- hello.cpp
+   #+end_example
+
+**** Source
+
+   #+begin_src c++
+     // hello.cpp
+
+     #include <iostream>
+
+     using namespace std;
+
+     int
+     main(int argc, char * argv[]) {
+         std::string subject = "World";
+
+         if (argc > 1)
+             subject = argv[1];
+
+         cout << "Hello, " << subject << "!" << std::endl;
+     } /*main*/
+
+   #+end_src
+
+**** Cmake build files
+   #+begin_src cmake
+     # CMakeLists.txt
+
+     cmake_minimum_required(VERSION 3.10)
+
+     project(hello-example VERSION 1.0)
+
+     enable_language(CXX)
+
+     # write compile_commands.json for LSP
+     set(CMAKE_EXPORT_COMPILE_COMMANDS ON CACHE INTERNAL "")
+
+     set(SELF_EXE hello-example)
+     set(SELF_SOURCE_FILES hello.cpp)
+
+     add_executable(${SELF_EXE} ${SELF_SOURCE_FILES})
+
+     install(TARGETS ${SELF_EXE} DESTINATION bin)
+
+     if(CMAKE_EXPORT_COMPILE_COMMANDS)
+         # include otherwise-omitted system directories in compile_commands.json,
+         # so LSP knows exactly what compiler is using
+         set(CMAKE_CXX_STANDARD_INCLUDE_DIRECTORIES ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
+     endif()
+   #+end_src
+
+**** Build + Run
+   #+begin_example
+   $ cd hello-example
+   $ mkdir build
+   $ cmake ..
+   -- Configuring done
+   -- Generating done
+   -- Build files have been written to: /home/roland/proj/hello-example/build
+   $ make
+   [ 50%] Building CXX object CMakeFiles/hello-example.dir/hello.cpp.o
+   [100%] Linking CXX executable hello-example
+   [100%] Built target hello-example
+   $ ./hello-example
+   Hello, World!
+   #+end_example
+
+**** Continuous Integration with Github
+
+   We need to do two things:
+   1. setup a github repo holding our sources:
+      #+begin_src
+      $ cd hello-world
+      $ git remote -v
+      origin  git@github.com:rconybea/hello-example.git (fetch)
+      origin  git@github.com:rconybea/hello-example.git (push)
+      #+end_src
+   2. configure github actions for that repo
+      We add one file, ~hello-world/.github/workflows/main.yml~
+
+      #+begin_src yaml
+      name: c++ build with cmake
+
+      on:
+        push:
+          branches: ["main"]
+        pull_request:
+          branches: ["main"]
+
+      env:
+        BUILD_TYPE: Release
+
+      jobs:
+        build_job:
+          runs-on: ubuntu-latest
+
+          steps:
+          - name: checkout self (hello-example)
+            uses: actions/checkout@v3
+
+          - name: configure self (hello-example)
+            run: cmake -B ${{github.workspace}}/build -DCMAKE_INSTALL_PREFIX=${{github.workspace}}/local -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
+
+          - name: build self (hello-example)
+            run: cmake --build ${{github.workspace}}/build --verbose
+
+          - name: test self (hello-example)
+            working-directory: ${{github.workspace}}/build
+            run: ./hello-example
+      #+end_src
+
+      github will automatically trigger a build whenever new sources are pushed.
+      build will run the contents of ~steps~ in order.
+
+** Scheme 2
+
+   Instead of building on github-provided base ubuntu platform,
+   use github-built docker container.
+
+   Initially replacing c++ program with shell script,  we'll restore it later.
+
+*** Preliminaries
+
+    source for ~Scheme 2~ is on github here: https://github.comt/Rconybea/docker-action-example
+
+    Build docker container (using resources from ubuntu base platform).
+    Container:
+    - invokes a shell script to say hello
+    - can be used as a github action
+
+**** Directory Structure
+
+     #+begin_example
+     docker-action-example
+     +- .github
+     |  \- workflows
+     |     \- main.yml
+     +- action.yml
+     \- entrypoint.sh
+     #+end_example
+
+**** Source
+
+     entrypoint.sh:
+     #+begin_src sh
+       #!/usr/bin/env bash
+       echo "Hello $1"
+       time=$(date)
+       echo "time=$time" >> $GITHUB_OUTPUT
+     #+end_src
+
+**** Docker Container
+
+     DockerFile:
+     #+begin_example
+     # base container image
+     FROM ubuntu:22.04
+
+     # copy files from repo to container filesystem
+     COPY entrypoint.sh /entrypoint.sh
+
+     # default startup executable
+     ENTRYPOINT ["/entrypoint.sh"]
+     #+end_example
+
+**** Use Container as github action
+
+     toplevel ~action.yml~ describes a custom github action
+     that operates by invoking docker image
+     (automagically built from enclosed ~DockerFile~)
+
+     action.yml:
+
+     #+begin_src yaml
+     name: 'Hello World'
+
+     description: 'Greet someone + record the time'
+
+     inputs:
+       who-to-greet:
+         description: 'Who to greet'
+         required: true
+         default: "World"
+
+     outputs:
+       time:
+         description: "time when greeting made"
+
+     runs:
+       using: 'docker'
+       image: 'DockerFile'
+       args:
+         - ${{ inputs.who-to-greet }}
+
+     #+end_src
+
+**** Continuous Integration with Github
+
+     Configure github actions for repo https://github.com/Rconybea/docker-action-example;
+
+     File ~.github/workflows/main.yml~
+     #+begin_src yaml
+       on: [push]
+
+       jobs:
+         hello_world_job:
+           runs-on: ubuntu-latest
+           name: a job to say hello, perhaps fiercely
+           steps:
+             - name: hello world action step
+               id: hello
+               uses: rconybea/docker-action-example@v1
+               with:
+                 who-to-greet: 'Iffy!  What are you doing??'
+                 # do something with output
+                 - name: get output time
+                   run: echo "The time was ${{ steps.hello.outputs.time }}"
+     #+end_src
+
+     In ~main.yml~ here:
+     - ~rconybea/docker-action-example~ is our github repo,
+     - ~v1~ is target github tag
+
+** Scheme 3
+
+*** Preliminaries
+
+Source for ~Scheme 3~ uses two repos:
+
+Custom container build here: [[https:://github.com/Rconybea/docker-nix-hello]]
+Workflow using container here: [[https://github.com/Rconybea/docker-action-example2]]
+See also: https://blog.bitsrc.io/using-github-container-registry-in-practice-295677c6f65e]]
+
+Prepare minimal custom docker container using a nix flake.
+
+**** Directory structure
+
+     #+begin_example
+     docker-nix-hello
+     +- flake.nix
+     \- flake.lock    # automatically created by nix
+     #+end_example
+
+     #+begin_example
+     docker-action-example2
+     \- .github
+        \- workflows
+           \- main.yml
+     #+end_example
+
+**** Source
+     flake.nix:
+     #+begin_example
+     {
+       description = "hello world";
+
+       # dependencies
+       inputs = rec {
+         nixpkgs.url = "github:nixos/nixpkgs/23.05";
+       };
+
+       outputs = { self, nixpkgs } :
+         let
+           system = "x86_64-linux";
+           pkgs = import nixpkgs { inherit system; };
+
+           hello_deriv = pkgs.writeShellScriptBin "entrypoint.sh" ''
+             echo "Hello $1"
+             time=$(date)
+             echo "time=$time" >> $GITHUB_OUTPUT
+           '';
+
+           docker_hello_deriv =
+             pkgs.dockerTools.buildLayeredImage {
+               name = "docker-nix-hello";
+               tag = "v1";
+               contents = [ self.packages.${system}.hello
+                            self.packages.${system}.bash
+                            # for /bin/tail,  assumed by github actions when invoking a docker container
+                            self.packages.${system}.coreutils ];
+
+               config = {
+                 Cmd = [ "/bin/entrypoint.sh" ];
+                 WorkingDir = "/";
+               };
+             };
+
+         in rec {
+           packages.${system} = {
+             default = docker_hello_deriv;
+
+             docker_hello = docker_hello_deriv;
+             hello = hello_deriv;
+
+             bash = pkgs.bash;
+             # for example,  github actions creates container with --entrypoint "tail",
+             # so container must provide executable with that name in $PATH
+             #
+             coreutils = pkgs.coreutils;
+           };
+         };
+     }
+     #+end_example
+
+**** Build Container + Upload to github
+
+     Container will be ~docker-nix-hello~.
+
+     Steps:
+     1. get github personal access token,
+        so docker can send images to ~ghcr.io~.
+        on [[https://github.com/Rconybea]]:
+        - visit profile (upper rhs of ~github~ webpage)
+        - developer settings (bottom of sidebar)
+        - personal access token
+        - tokens (classic)
+        - generate personal access token with scopes:
+          ~read:packages~ ~write:packages~ ~delete:packages~
+     2. have docker login to github
+        #+begin_src sh
+          export CR_PAT=${token}
+          echo $CR_PAT | docker login ghcr.io -u rconybea --password-stdin
+        #+end_src
+     3. nix builds custom image (using ~docker-nix-hello/flake.nix~)
+        #+begin_src sh
+          cd ~/proj/docker-nix-hello
+          nix build
+        #+end_src
+     4. load image into docker
+        #+begin_src sh
+          docker load <~/proj/docker-nix-hello/result
+        #+end_src
+     5. tag image the way github expects: ~ghcr.io/${username}/${imagename}:${tag}~
+        #+begin_src sh
+          docker image tag docker-nix-hello:v1 ghcr.io/rconybea/docker-nix-hello:v1
+        #+end_src
+     6. push to github container registry
+        (will show up at https://github.com/Rconybea?tab=packages)
+        #+begin_src sh
+          docker image push ghcr.io/rconybea/docker-nix-hello:v1
+        #+end_src
+     7. make package public from package's settings link
+
+**** Workflow Using Custom Container
+
+     in ~docker-action-example2/.github/workflows/main.yml~:
+     #+begin_src yaml
+       on: [push]
+
+       jobs:
+         hello_world_job:
+           name: a job to say hello,  using separate docker container
+           runs-on: ubuntu-latest
+           container:
+             image: ghcr.io/rconybea/docker-nix-hello:v1
+             steps:
+               - name: hello world action step
+                 id: hello
+                 run: /bin/entrypoint.sh 'Xioni!'
+                 - name: get output time
+                   run: echo "The time was ${{ steps.hello.outputs.time }}"
+     #+end_src

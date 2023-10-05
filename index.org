@@ -11,10 +11,11 @@
 #+startup: showall
 #
 # options used exclusively by the html exporter
+#+setupfile: ext/fniessen/theme-readtheorg.setup
 #+language: en
-#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
-#+html_head: <link rel="stylesheet" type="text/css" href="/web/css/notebook.css" />
-#+html_link_home: index.html
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+# +html_link_home: index.html
 
 * Introduction
   How-to articles maintained at [[https://github.com/Rconybea/org-howto]]

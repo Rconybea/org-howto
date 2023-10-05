@@ -1,0 +1,290 @@
+#+title: publishing static HTML
+# org-publish options
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
+#+language: en
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+# +html_link_home: index.html
+# +html_link_up: development-environment.org
+
+* Publish Static HTML
+    In particular,  including this content.
+    Content formatted using ~org-mode~.
+
+    Maintaining public ~.org~ content here: [[https://github.com/Rconybea/org-howto]]
+
+** base emacs configuration for publishing
+
+     See also
+     [[https://orgmode.org/worg/org-tutorials/org-publish-html-tutorial.html]]
+
+     ~org-publish-project-alist~ configures org trees for publishing:
+     #+begin_src elisp
+     ;; ----------------------------------------------------------------
+     ;; org-mode publishing
+     ;;
+     (require 'ox-publish)
+
+     ;; publishing setup -- this is a kitchen sink -- it's intended to cover
+     ;; everything we want org-mode to publish
+     ;;
+     (setq org-publish-project-alist
+           '(
+             ("org-howto"
+              :components ("org-howto-notes" "org-howto-static"))
+
+             ("org-howto-notes"
+              :base-directory "~/proj/org-howto"
+              :base-extension "org"
+              :publishing-directory "~/proj/public_html/org-howto"
+              :recursive t
+              :publishing-function org-html-publish-to-html
+              :headling-levels 4
+              :auto-preamble t
+              )
+
+             ("org-howto-static"
+              :base-directory "~/proj/org-howto"
+              :base-extension "css\\|html\\|js\\|svg\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
+              :publishing-directory "~/proj/public_html/org-howto"
+              :recursive t
+              :publishing-function org-publish-attachment
+              )
+             )
+
+             ; ... additional org trees here ...
+             )
+     #+end_src
+
+     With this configuration
+     #+begin_example
+     ~M-x org-publish-project org-howto~
+     #+end_example
+
+     generates HTML content in =~/proj/public_html/org-howto~=.
+
+** setup for literate programming
+
+     ~org-mode~ can automate weaving together content prepared by other programs,
+     for example ~graphviz~.
+
+     =~/.emacs= Configuration for such adopted sources (as of 1oct2023 just graphviz):
+
+     #+begin_src elisp
+     ;; ----------------------------------------------------------------
+     ;; org-mode babel setup
+     ;; (execute dot/ditaa/bash/c++ etc. from .org code blocks)
+     ;;
+     ;; see
+     ;;   [[https://orgmode.org/worg/org-contrib/babel/intro.html]]
+     ;;   [[https://orgmode.org/worg/org-contrib/babel/languages/index.html]]
+     ;;
+     ;; code block:
+     ;;   #+begin_src ${language} ${switches} ${headerarguments}
+     ;;     ${body}
+     ;;   #+end_src
+     ;;
+     ;; use header argument
+     ;;   :results output
+     ;; to insert code-block output (i.e. contents of stdout) into .org file below code block
+     ;;
+     ;; use
+     ;;   :results value
+     ;; to just take value of last statement
+     ;;
+     ;; use
+     ;;   :session
+     ;; to share language sub-process across code-blocks.
+     ;;
+     ;; can use
+     ;;   #+name: foo
+     ;; to name an org-mode table;  then:
+     ;;   #+begin_src ... :var myfreevar=foo
+     ;;     ...
+     ;;   #+end_src
+     ;; with body mentioning myfreevar;  .org will substitute foo
+     ;;
+     ;; can do inline coode block with
+     ;;   src_<${lang}>{${code}} or src_<${lang}[${args}]{${code}}
+     ;; e.g.
+     ;;   src_python[:session]{10*x}
+     ;;
+     ;; notes:
+     ;;   [C-c C-v] org-babel prefix
+     ;;   [C-c C-v b] -- evaluate code blocks in buffer
+     ;;   [C-c C-v s] -- evaluate code blocks in subtree
+     ;;   [C-c C-v e] -- evaluate code block at point
+     ;;   [C-c '] M-x org-edit-src-code -- puts code block in new buffer with appropriate mode activated
+     ;;   [C-c M-b p] M-x org-babel-expand-src-block -- show expanded code block prior to evaluation
+     ;;   (org-babel-lob-ingest "path/to/file.org") to share code blogs as 'library'
+
+     (org-babel-do-load-languages
+      'org-babel-load-languages
+      '((dot . t)  ; graphviz [[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html]] see also graphviz-dot-mode
+        ))
+     #+end_src
+
+     Example ~.org~ content using graphviz:
+
+     #+begin_example
+      ,#+begin_src dot :file img/living-room-av/macmini.svg :exports results :cmdline -Tsvg
+      digraph {
+        size="4,4";
+        rankdir=LR;
+        s [label="mac mini", shape="box"];
+        r [label="receiver", shape="box"];
+        m [label="monitor", shape="box"];
+        sp [label="spkr", shape="ellipse"];
+        s -> r[label="VDP",color="red"];
+        s -> m[label="input#2",color="blue"];
+        r -> sp[color="red"];
+      }
+      ,#+end_src
+     #+end_example
+
+     publishing (or using =C-c C-v b=) creates/updates file in =img/living-room-av/macmini.svg=
+
+** HTML theme
+
+     Using Fabrice Niessen's awesome readtheorg theme see [[https://github.com/fniessen/org-html-themes][org-html-themes]]
+     Cloned ~.setup~ file to ~org-howto/ext/fniessen/theme-readtheorg.setup~.
+     Apply theme by including the following in each ~.org~ header:
+
+     #+begin_src org
+     # options used exclusively by the html exporter
+     #+setupfile: ext/fniessen/theme-readtheorg.setup
+     #+end_src
+
+** display HTML locally
+
+     Once we have HTML in =~/proj/public_html/org-howto=,  can view it locally:
+     #+begin_src sh
+       python3 -m http.server --directory ~/proj/public_html/org-howto 8080
+     #+end_src
+
+     then point browser to =localhost:8080= (or for the content you're reading now: =localhost:8080/env/development-environment.html=)
+
+     Caveat: builtin python webserver doesn't support https.
+
+** publish to github pages
+
+     To work with github pages,  We tweak the ~.org~ tree slightly:
+     #+begin_src sh
+       cd ~/proj/org-howto
+       ln -s ext web
+     #+end_src
+
+     This is to match the github repo name [[https://github.com/Rconybea/web]].
+     When we publish ~.org~ tree to github pages, it appears at [[https://rconybea.github.io/web]]
+
+     ~.org~ pages that want to use root-relative paths, prefix with =/web=:
+     #+begin_example
+      ,#+infojs_opt: view:showall toc:nil ltoc:nil mouse:#ffc0c0 path:/web/ext/orginfo/org-info.js
+      ,#+html_head: <link rel="stylesheet" type="text/css" href="/web/css/notebook.css" />
+     #+end_example
+
+     1. github pages: =/web/ext/orginfo/org-info.js= resolves via =ext/orginfo/org-info.js=..
+     2. natively hosted: =/web/ext/orginfo/org-info.js= resolves via =web/ext/orginfo-org-info.js=.
+
+     Note that =org-publish= expands the =web= symlink,  so everything under the =ext= tree will be duplicated
+
+** package as docker container
+
+     We can snapshot and serve generated html in a dedicated docker container with this =flake.nix=
+     (in =~/proj/public_html=,  given html output written to =~/proj/public_html/org-howto=)
+
+     #+begin_src yaml
+     {
+       description = "publish org-howto-derived html";
+
+       # dependencies of this flake
+       inputs = rec {
+         nixpkgs.url = "github:nixos/nixpkgs/23.05";
+         org_howto_path = {
+           url = "./org-howto";
+           flake = false;
+         };
+       };
+
+       outputs = { self, nixpkgs, org_howto_path } :
+         let
+           system = "x86_64-linux";
+           pkgs = import nixpkgs { inherit system; };
+
+           # creates shell script 'serve-org-howto'.
+           # to use:
+           #   $ cd ~/proj/public_html
+           # A.
+           #   $ nix build
+           #   $ ./result/bin/serve-org-howto
+           # B.
+           #   $ nix run
+           #
+           serve_org_howto_deriv = pkgs.writeShellScriptBin "serve-org-howto" ''
+             ${pkgs.python3}/bin/python3 -m http.server 8080 --directory ${org_howto_path}
+           '';
+
+           # builds custom docker image!
+           serve_org_howto_docker_deriv =
+             let
+               serve_org_howto = self.packages.${system}.serve_org_howto;
+             in
+               pkgs.dockerTools.buildLayeredImage {
+                 name = serve_org_howto.name;
+                 tag = "1.0";
+                 contents = [ serve_org_howto ];
+
+                 config = {
+                   Cmd = [ "/bin/serve-org-howto" ];
+                   WorkingDir = "/";
+                 };
+               };
+
+         in rec {
+           packages.${system} = {
+             default = serve_org_howto_deriv;
+
+             serve_org_howto = serve_org_howto_deriv;
+             serve_org_howto_docker = serve_org_howto_docker_deriv;
+           };
+         };
+     }
+     #+end_src
+
+     1. build docker container image using =~/proj/public_html/flake.nix=:
+        #+begin_example
+          $ cd ~/proj/public_html
+          $ nix build
+          $ ls -ld result
+          /nix/store/dck2rix8n8sx6wi0d4is0fq17c72ddqx-serve-org-howto.tar.gz
+        #+end_example
+
+     2. load image into docker
+        #+begin_example
+        $ docker load <./result
+        #+end_example
+
+        or send to some other host:
+        #+begin_example
+        $ mycloudhost=...
+        $ scp /nix/store/dck2rix8n8sx6wi0d4is0fq17c72ddqx-serve-org-howto.tar.gz root@${mycloudhost}
+        $ ssh ${mycloudhost}
+
+        mycloudhost$ docker load < /nix/store/dck2rix8n8sx6wi0d4is0fq17c72ddqx-serve-org-howto.tar.gz
+        mycloudhost$ docker images
+        REPOSITORY        TAG       IMAGE ID       CREATED        SIZE
+        serve-org-howto   1.0       113e8c1232fa   53 years ago   165MB
+        mycloudhost$ docker run serve-org-howto
+        #+end_example
+
+        HTML tree now served from =${mycloudhost}:8080=
+
+        Docker image contains only python and our html tree,  so much smaller than typical image.

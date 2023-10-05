@@ -1,6 +1,6 @@
 # org-howto
 Emacs org git repo with howto articles.
-Published regularly to github pages here: [[https://rconybea.github.io]]
+Published regularly to github pages here: [[https://rconybea.github.io/web]]
 see [[github://Rconybea/org-howto]] for snapshot of generated html tree
 
 publish content here from emacs, using `M-x org-publish-project org-howto`
