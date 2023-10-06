@@ -71,6 +71,7 @@
 
      generates HTML content in =~/proj/public_html/org-howto~=.
 
+
 ** setup for literate programming
 
      ~org-mode~ can automate weaving together content prepared by other programs,
@@ -201,7 +202,7 @@
      We can snapshot and serve generated html in a dedicated docker container with this =flake.nix=
      (in =~/proj/public_html=,  given html output written to =~/proj/public_html/org-howto=)
 
-     #+begin_src yaml
+     #+begin_src nix
      {
        description = "publish org-howto-derived html";
 

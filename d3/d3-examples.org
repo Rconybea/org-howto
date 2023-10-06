@@ -1,0 +1,38 @@
+#+title: miscellaneous how-tos
+#+author: Roland Conybeare
+#+email: git3ub@nym.hush.com
+#
+# org-publish options
+# H:2   controls section numbering.
+#       number top-level and second-level headings only
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# options used exclusively by emacs
+#+startup: showall
+#
+# options used exclusively by the html exporter
+#+setupfile: ext/fniessen/theme-readtheorg.setup
+#+language: en
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#+html_link_home: index.html
+
+* d3 Examples
+
+** Drag Series
+
+Progressive series of examples with draggable visual elements
+
+    - [[file:drag1/index.org][drag.1]] d3 draggable object example - standalone
+    - [[file:drag2/index.org][drag.2]] d3 draggable object example - inline
+    - [[file:drag3/index.org][drag.3]] d3 draggable object example - parametric
+    - [[file:drag4/index.org][drag.4]] d3 draggable object example - parametric + smooth selection
+    - [[file:drag5/index.org][drag.5]] d3 draggable object example - parametric + tangent
+    - [[file:drag6/index.org][drag.6]] d3 draggable object example - parametric + axes
+    - [[file:drag7/index.org][drag.7]] d3 draggable object example - parametric + tangent + quadratic
+
+** Option Pricing
+
+    - [[file:blackscholes/index.org][blackscholes]] interactive option pricing example *[WIP]*

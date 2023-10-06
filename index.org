@@ -1,4 +1,6 @@
 #+title: miscellaneous how-tos
+#+author: Roland Conybeare
+#+email: git3ub@nym.hush.com
 #
 # org-publish options
 # H:2   controls section numbering.
@@ -32,19 +34,9 @@
 * Contents
   - [[file:env/development-environment.org][c++ development environment]]
   - [[file:env/windows11-setup.org][windows11 setup]]
-  - org mode cookbook
-    - [[file:orgpub/org-examples.org][org-examples]] cookbook for org-mode publishing
-  - d3 examples
-    - [[file:d3/drag1/index.org][drag.1]] d3 draggable object example - standalone
-    - [[file:d3/drag2/index.org][drag.2]] d3 draggable object example - inline
-    - [[file:d3/drag3/index.org][drag.3]] d3 draggable object example - parametric
-    - [[file:d3/drag4/index.org][drag.4]] d3 draggable object example - parametric + smooth selection
-    - [[file:d3/drag5/index.org][drag.5]] d3 draggable object example - parametric + tangent
-    - [[file:d3/drag6/index.org][drag.6]] d3 draggable object example - parametric + axes
-    - [[file:d3/drag7/index.org][drag.7]] d3 draggable object example - parametric + tangent + quadratic *[WIP]*
-    - [[file:option/blackscholes/index.org][blackscholes]] interactive option pricing example *[WIP]*
-  - octave examples
-    - file:octave/octave-crib.org octave examples
+  - [[file:orgpub/org-examples.org][org-examples]] cookbook for org-mode publishing
+  - file:d3/d3-examples.org d3 (javascript graphics library) examples
+  - file:octave/octave-crib.org octave examples
 
 * .org source
    ~org-mode~ source here: [[file:index-src.org][index-src.org]]

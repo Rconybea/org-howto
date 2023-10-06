@@ -288,7 +288,7 @@ source for ~Scheme 1~ is on github here: [[https://github.com/Rconybea/hello-exa
 
 Source for ~Scheme 3~ uses two repos:
 
-- Custom container build here: [[https:://github.com/Rconybea/docker-nix-hello]]
+- Custom container build here: [[https://github.com/Rconybea/docker-nix-hello]]
 - Workflow using container here: [[https://github.com/Rconybea/docker-action-example2]]
 - See also: https://blog.bitsrc.io/using-github-container-registry-in-practice-295677c6f65e]]
 

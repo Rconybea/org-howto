@@ -11,6 +11,7 @@
 
 # set background color for clode blocks
 #+html_head: <style>pre.src{background:#343131;color:white;} </style>
+#+html_head: <style>pre.example{background:#343131;color:white;} </style>
 
 # allow wider content width (hate those horizontal scroll bars)
 #+html_head: <style> #content{max-width:1800px;}</style>
