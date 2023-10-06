@@ -77,13 +77,13 @@
 ** Build Stack
 
 *** nix setup
-*** emacs setup [[file:emacs-setup.org][.emacs walkthrough]]
-*** org-mode [[file:org-mode-resources.org][resources]]
+*** emacs setup: [[[file:emacs-setup.org][.emacs walkthrough]]]
+*** org-mode: [[file:org-mode-resources.org][[resources]]]
 *** c++ build (cmake)
 *** c++ unit tests
 *** c++ code coverage
 *** reproducible build (nix + flakes)
-*** continuous integration [[file:github-continuous-integration.org][github + nix + docker]]
+*** continuous integration: [[[file:github-continuous-integration.org][github + nix + docker]]]
 *** containers (docker)
 
 ** C++ Library Stack
@@ -92,4 +92,4 @@
 *** boost
 *** pybind11
 *** c++/browser communication
-*** publish org-mode content: [[file:publish-static-html.org][publish static html]]
+*** publish org-mode content: [[file:publish-static-html.org][[publish static html]]]
