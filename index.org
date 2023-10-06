@@ -1,4 +1,4 @@
-#+title: miscellaneous how-tos
+#+title: assorted how-tos
 #+author: Roland Conybeare
 #+email: git3ub@nym.hush.com
 #
@@ -32,8 +32,8 @@
   #+end_example
 
 * Contents
-  - [[file:env/development-environment.org][c++ development environment]]
-  - [[file:env/windows11-setup.org][windows11 setup]]
+  - [[file:env/development-environment.org][c++ development environment]] emacs/lsp/c++/cmake/nix/github/docker
+  - [[file:env/windows11-setup.org][windows11 setup]] wsl2 life hacks
   - [[file:orgpub/org-examples.org][org-examples]] cookbook for org-mode publishing
   - file:d3/d3-examples.org d3 (javascript graphics library) examples
   - file:octave/octave-crib.org octave examples
