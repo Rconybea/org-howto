@@ -1,0 +1,682 @@
+#+title: emacs setup
+# org-publish options
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
+#+language: en
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+# +html_link_home: index.html
+#+html_link_up: development-environment.org
+
+* Introduction
+
+  Roland Conybeare's curated emacs setup.
+  As of 6oct2023 using emacs version =29.0.91=, installed via the [[https://nixos.org][nix]] package manager.
+
+  =~/.emacs= symlinks to =~/proj/env/dotfiles/emacs= from git repo https://github.com/Rconybea/env.git;
+  using this to streamline account setup on new hosts.
+
+* .emacs
+
+** misc
+
+Compatibility with some Common Lisp idioms
+
+#+begin_src elisp
+(require 'cl-loaddefs)
+#+end_src
+
+** quality-of-life details
+
+*** qol: display
+#+begin_src elisp
+;; grab a little bit of extra screen real estate
+
+;; disable scrollbars
+(if (fboundp 'scroll-bar-mode)
+    (scroll-bar-mode -1))
+;; disable toolbars
+(if (fboundp 'tool-bar-mode)
+    (tool-bar-mode -1))
+;; disable menu bar
+(if (fboundp 'menu-bar-mode)
+    (menu-bar-mode -1))
+
+;; prevent initial emacs splash screen
+(setq inhibit-splash-screen t)
+#+end_src
+
+*** qol: yes-or-no
+
+#+begin_src elisp
+;; don't like having to type 'yes' or 'no';  'y' or 'n' will do
+
+(defalias 'yes-or-no-p 'y-or-n-p)
+#+end_src
+
+*** qol: nuke ctrl-Z
+
+#+begin_src elisp
+;; C-z bound to suspend frame is annoying,  because
+;; it gets typed by accident too often.
+;; C-x C-z remains available as an alternative binding
+(global-unset-key (kbd "C-z"))
+(global-unset-key (kbd "<return>"))
+#+end_src
+
+*** qol: navigation
+
+#+begin_src elisp
+(global-set-key (kbd "C-x t") 'beginning-of-buffer)
+(global-set-key (kbd "C-x e") 'end-of-buffer)
+
+;; keeping window hopping to current frame allows for satellite frames that are
+;; mostly display-only (e.g. magit status)
+;;
+(global-set-key (kbd "C-x o") 'other-window)
+(global-set-key (kbd "C-x p") (lambda () (interactive) (other-window -1)))
+;;(global-set-key "\C-xo" 'next-multiframe-window)
+;;(global-set-key "\C-xp" 'previous-multiframe-window)
+
+(global-set-key (kbd "S-<left>") 'windmove-left)
+(global-set-key (kbd "S-<right>") 'windmove-right)
+(global-set-key (kbd "S-<up>") 'windmove-up)
+(global-set-key (kbd "S-<down>") 'windmove-down)
+#+end_src
+
+*** qol: kill
+
+#+begin_src elisp
+  ;; instead of kill-region,
+  ;; prefer consistency with emacs-like keybindings e.g. gnu readline
+  (global-set-key (kbd "C-w") 'backward-kill-word)
+
+  ;; instead of C-w..
+  (global-set-key (kbd "C-x C-k") 'kill-region)
+  (global-set-key (kbd "C-c C-k") 'kill-region)
+#+end_src
+
+This tweak allows using zap on necessary punctuation characters,
+without swallowing them.
+#+begin_src elisp
+;; use zap-up-to-char instead of zap-to-char
+(autoload 'zap-up-to-char "misc"
+  "kill up to, but not including ARG'th occurence of CHAR.
+\(fn arg char)"
+  'interactive)
+(global-set-key "\M-z" 'zap-up-to-char)
+#+end_src
+
+*** qol: query replace
+
+#+begin_src elisp
+;; M-x qr --> M-x query-replace
+;; M-x qrr --> M-x query-replace-regexp
+
+(defalias 'qr 'query-replace)
+(defalias 'qrr 'query-replace-regexp)
+#+end_src
+
+*** qol: mouse-3 on macos
+
+#+begin_src elisp
+;; mouse-3 annoying on macbook 11.3
+
+(if (eq system-type 'darwin)
+    (global-unset-key [mouse-3]))
+#+end_src
+
+*** qol: mouse avoidance
+
+Don't let mouse icon obscure cursor
+#+begin_src elisp
+(mouse-avoidance-mode 'animate)
+#+end_src
+
+Make cursor and mouse easier to see
+#+begin_src elisp
+(set-mouse-color "red")
+(set-cursor-color "red")
+#+end_src
+
+*** qol: default font
+
+#+begin_src elisp
+;; ----------------------------------------------------------------
+;; default font
+
+;; note:
+;;   C-x C-+             increase buffer text size
+;;   C-x C-=             something buffer text size
+;;   C-x C--             decrease buffer text size
+;;   C-x C-0             restore default buffer text size
+;;   M-x describe-font   display font canonical name + stats in a new buffer
+;;
+
+;; to install inconsolata on ubuntu:
+;;   $ sudo apt-get -y install fonts-inconsolata
+;; for nix,  can use package
+;;   nixpkgs.inconsolata-lgc
+
+(add-to-list
+ 'default-frame-alist
+ '(font . "-PfEd-Inconsolata-medium-normal-normal-*-14-*-*-*-m-0-iso10646-1"))
+#+end_src
+
+*** qol: initial window height
+
+#+begin_src elisp
+(defvar target-frame-width (+ 1 (* 2 135)))
+
+(defun set-frame-size-from-screen-resolution ()
+  "Infer suitable default frame size.
+Reminder: no such thing as .Xresources under WSL."
+  (interactive)
+  (if (display-graphic-p)
+      (progn
+        (let* ((horizontal-room (/ (x-display-pixel-width)
+                                   (frame-char-width)))
+               (using-width (min target-frame-width
+                                 horizontal-room)))
+          (set-frame-width (selected-frame)
+                           using-width)
+          ;;(add-to-list 'default-frame-alist (cons 'width using-width))
+          )
+        ;; subtracting 200 pixels of vertical space
+        (let* ((vertical-padding 100)
+               (vertical-room (/ (- (x-display-pixel-height)
+                                    vertical-padding)
+                                 (frame-char-height))))
+          (set-frame-height (selected-frame)
+                            vertical-room)
+          ;;(add-to-list 'default-frame-alist (cons 'height vertical-room))
+          ))))
+
+(set-frame-size-from-screen-resolution)
+#+end_src
+
+** package: try
+
+#+begin_src elisp
+;; the 'try' package lets us try a package without permanently installing it.
+;; use
+;;  M-x try ${nameofpackage}
+;;
+(use-package try :ensure t)
+#+end_src
+
+** package: which-key
+
+#+begin_src elisp
+;; the 'which-key' package displays popup with key bindings following
+;; currently entered incomplete command
+;;
+(use-package which-key :ensure t :config (which-key-mode))
+#+end_src
+
+** backup file location
+
+#+begin_src elisp
+;; backup location
+;; (don't clutter filesystem with emacs backup files)
+
+(let ((backup-dir "~/tmp/emacs/backups")
+      (auto-saves-dir "~/tmp/emacs/autosaves"))
+  ;; create dirs if needed
+  (dolist (dir (list backup-dir auto-saves-dir))
+    (when (not (file-directory-p dir))
+      (make-directory dir t)))
+  (setq backup-directory-alist `(("." . ,backup-dir))
+        auto-save-file-name-transforms `((".*" ,auto-saves-dir t))
+        auto-save-list-file-prefix (concat auto-saves-dir ".saves-")
+        ;; tramp-backup-directory-alist `((".*" . ,backup-dir))
+        ;; tramp-auto-save-directory auto-saves-dir
+        )
+  (setq backup-by-copying t
+        delete-old-versions t
+        version-control t
+        kept-new-versions 5
+        kept-old-versions 2)
+  )
+#+end_src
+
+** prefer ibuffer
+
+#+begin_src elisp
+;; ----------------------------------------------------------------
+;; replace list-buffers (^x^b) with ibuffer
+;; ibuffer is much better
+
+(global-set-key "\C-x\C-b" 'ibuffer)
+#+end_src
+
+** dynamic abbreviations
+
+For consciously correcting typos
+#+begin_src elisp
+;; ----------------------------------------------------------------
+;;
+(global-set-key (kbd "C-<tab>") #'dabbrev-expand)
+(define-key minibuffer-local-map (kbd "C-<tab>") #'dabbrev-expand)
+#+end_src
+
+** package: flycheck
+
+Flycheck runs in the background.  It automatically (and subtly) highlights syntax errors as you type.
+Preferred over built-in flyspell.
+
+#+begin_src elisp
+;; enable flycheck
+
+;; see:
+;;   https://www.flycheck.org/en/latest/user/quickstart.html#flycheck-quickstart
+;;
+;; keybindings:
+;;   C-c ! v              show version + configuration info for this buffer
+;;   C-c ! n / C-c ! p    inspect errors on this line
+;;   C-c ! l              show errors for this buffer
+
+(global-flycheck-mode)
+
+(if (eq system-type 'darwin)
+    ;; need this for flycheck on macos only..
+    (exec-path-from-shell-initialize))
+#+end_src
+
+** completion assist
+
+*** completion: ivy
+
+#+begin_src elisp
+(use-package ivy
+  :ensure t
+  :init (progn
+          (setq ivy-use-virtual-buffers t)
+          (setq ivy-count-format "%d/%d) ")
+          (ivy-mode 1))
+  )
+#+end_src
+
+** C++
+
+*** c++: indenting + tabs
+
+#+begin_src elisp
+;; in general want to expand tabs,  + use 4 characters
+
+(setq-default indent-tabs-mode nil)
+(setq-default tab-width 4)
+
+;; used in style-specific modes, e.g. c++-mode
+;; other styles: gnu | k&r | bsd | whitesmith | stroustrup | ellemtel | user
+;;
+;; C-c . <style>    choose predefined style
+;;(defvar 'c-default-style)
+;;(defvar 'c-basic-offset)
+
+(setq-default c-default-style "linux")
+(setq-default c-basic-offset 4)
+
+(defun disable-tabs ()
+  "Function to disable tab insertion; intended to be attached via c++-mode-hook."
+  (if (boundp 'indent-tabs-mode)
+      (setq indent-tabs-mode nil)
+    (error "Expected variable [indent-tabs-mode] to be defined")
+    ))
+
+;; in general disable tabs (expand to spaces)
+(add-hook 'c++-mode-hook 'disable-tabs)
+#+end_src
+
+*** c++: whitespace
+
+#+begin_src elisp
+;; will be using customized whitespace mode,  that just highlights trailing spaces
+;;
+(add-hook 'c++-mode-hook 'whitespace-mode)
+
+;; tabs:  visible tab characters
+;; trailing: visible trailing whitespace
+;;
+(setq-default whitespace-style '(face tabs tab-mark trailing))
+
+;; 124 is | character
+(setq-default whitespace-display-mappings
+          '((tab-mark 9 [124 9] [92 9])))
+
+(defun untabify-except-makefiles ()
+  "Replace tabs with spaces except in makefiles."
+  (unless (derived-mode-p 'makefile-mode)
+    (prog1 nil
+      (untabify (point-min) (point-max))
+      (delete-trailing-whitespace)
+      )))
+
+(add-hook 'c++-mode-hook
+          #'(lambda ()
+              (add-hook 'before-save-hook #'untabify-except-makefiles)))
+#+end_src
+
+*** cmake editing
+
+#+begin_src elisp
+;; cmake mode
+;;
+(use-package cmake-mode
+  :ensure t
+  :init (progn
+          (setq cmake-tab-width 4)
+          )
+  )
+#+end_src
+
+*** c++ completion
+
+#+begin_src elisp
+(require 'company)
+(add-hook 'c++-mode-hook 'company-mode)
+#+end_src
+
+*** *compilation* buffer
+
+For example,  to respond to =cmake= colored output
+
+#+begin_src elisp
+;; ----------------------------------------------------------------
+;; xterm-color
+;;
+;; more modern package relative to ansi-color
+;; see [[https://stackoverflow.com/questions/3072648/cucumbers-ansi-colors-messing-up-emacs-compilation-buffer]]
+;;
+(defun my/advice-compilation-filter (f proc string)
+  "colorize buffer output"
+  (funcall f proc (xterm-color-filter string)))
+
+(defvar compilation-environment)
+
+(use-package xterm-color
+  :ensure t
+  :init (progn (setq compilation-environment '("TERM=xterm-256color"))
+               (advice-add 'compilation-filter :around #'my/advice-compilation-filter))
+  )
+#+end_src
+
+** Development
+
+*** dev: snippets
+
+#+begin_src elisp
+;; snippets!
+;; (see http://capitaomorte.github.io/yasnippet,
+;;  http://githib.com/capitaomorte/yasnippet)
+;; snippets in ~/.emacs.d/elpa/yasnippet-20200604.246/snippets
+;;
+;; summary:
+;;  M-x yas-expand -- try to expand snippet before point.  Usually TAB
+;;  M-x yas-load-directory -- load a directory of snippets
+;;  M-x yas-activate-extramode -- add snippets for a particular mode, in the current buffer
+;;  M-x yas-insert-snippet -- insert snippet at point
+;;  M-x yas-visit-snippet-file -- prompt for snippet expansion,  but go to definition
+;;  M-x yas-new-snippet -- create a new snippet in ~/.emacs.d/snippets, function of major mode
+;;  M-x yas-load-snippet-buffer -- load the snippet you are editing C-c C-c in snippet-mode
+;;  M-x yas-tryout-snippet -- insert current snippet in a new empty buffer C-c C-t in snippet-mode
+;;  M-x yas-describe-tables -- list known snippets
+;;
+
+(use-package yasnippet
+  :ensure t
+  :config (yas-global-mode 1))
+
+(add-hook 'c++-mode-hook 'yas-minor-mode)
+(add-hook 'cmake-mode-hook 'yas-minor-mode)
+(add-hook 'emacs-lisp-mode-hook 'yas-minor-mode)
+
+(global-set-key (kbd "C-<return>") 'yas-expand)
+(global-set-key (kbd "C-c & C-n") 'yas-new-snippet)
+(global-set-key (kbd "C-c & C-v") 'yas-visit-snippet-file)
+
+;;(yas-global-mode t)
+;;;; yas-snippet-dirs
+;;;; yas-installed-snippets-dir
+;;;; (yas-reload-all)
+#+end_src
+
+*** dev: projectile
+
+#+begin_src elisp
+;; projectile
+
+(defconst modi/rg-arguments
+  `("--line-number" ; print line numbers
+    "--smart-case"
+    "--follow"      ; follow symlinks
+    "--mmap"        ; use memory-map optimization where available
+    )
+  "default rg args used in the `projectile` package.")
+
+(defun modi/advice-projectile-use-rg (mode)
+  "always use `rg' to establish project file list"
+  (mapconcat 'identity
+             (append '("\\rg") ; unalised version of rg
+                     modi/rg-arguments
+                     '("--null"   ; null-separated results
+                       "--files"  ; locate + print file names (don't search them)
+                       ))
+             " "))
+
+(use-package projectile
+  :ensure t
+  :init (progn (projectile-mode +1)
+               ;;(setq projectile-indexing-method 'native) -- want to use rg below
+               (setq projectile-project-compilation-dir "")
+               (setq projectile-enable-caching t)
+               ;; using rg to identify project source files:
+               ;; - honors .gitignore
+               ;; - fast, too!
+               (when (executable-find "rg")
+                 (progn
+                   (advice-add 'projectile-get-ext-command
+                               :override #'modi/advice-projectile-use-rg))))
+  :bind (:map projectile-mode-map
+              ("s-p" . projectile-command-map)
+              ("C-c p" . projectile-command-map)))
+#+end_src
+
+*** dev: language server protocol (LSP)
+
+#+begin_src elisp
+;; ----------------------------------------------------------------
+;; language-server-protocol
+
+;; +format-with-lsp: provided by lsp-mode
+(defvar +format-with-lsp)
+(defvar lsp-clients-clangd-args)
+
+;; see:
+;;   https://emacs-lsp.github.io/lsp-mode
+
+(defun disable-lsp-format ()
+  "Disable clang-driven formatting via lsp to prefer emacs-native formatting."
+  (setq +format-with-lsp nil))
+
+(use-package lsp-mode
+  :config
+  (setq lsp-enable-indentation nil) ; disable clang indentation -- doesn't preserve newlines!
+  (setq lsp-enable-on-type-formatting nil)
+  (setq lsp-modeline-diagnostics-enable t)
+  (add-hook 'c++-mode-hook #'lsp-deferred)
+  (add-hook 'c++-mode-hook #'disable-lsp-format)
+  (setq lsp-clients-clangd-args '("-j=4" "-background-index" "-log=error"))
+  ;;(add-hook 'python-mode-hook #'lsp)
+)
+#+end_src
+
+*** dev: git integration
+
+#+begin_src elisp
+;; git integration
+;;  C-x M-g
+;;
+(use-package magit
+         :ensure t
+         :init (progn (bind-key "C-x M-g j" 'magit-status)))
+#+end_src
+
+*** dev: nix mode
+
+Syntax highlighting in nix files
+
+#+begin_src elisp
+;; ----------------------------------------------------------------
+;; nix mode (syntax highlighting etc for .nix files)
+;;
+(use-package nix-mode :ensure t)
+#+end_src
+
+*** dev: yaml mode
+
+Syntax highlighting in yaml files
+
+#+begin_src elisp
+;; yaml mode (syntax highlighting etc for .yml, .yaml files)
+;;
+(use-package yaml-mode :ensure t
+  :init (progn (add-to-list 'auto-mode-alist '("\\.yml\\'" . yaml-mode))))
+#+end_src
+
+** org-mode
+
+*** org: publishing
+
+#+begin_src elisp
+;; org-mode publishing
+;;
+(require 'ox-publish)
+
+;; syntax highlighting in html exporter
+;;
+(use-package htmlize :ensure t)
+
+;; publishing setup -- this is a kitchen sink -- it's intended to cover
+;; everything we want org-mode to publish
+;;
+(setq org-publish-project-alist
+      '(
+        ("org-howto"
+         :components ("org-howto-notes" "org-howto-static"))
+
+        ("org-howto-notes"
+         :base-directory "~/proj/org-howto"
+         :base-extension "org"
+         :publishing-directory "~/proj/public_html/org-howto"
+         :recursive t
+         :publishing-function org-html-publish-to-html
+         :headling-levels 4
+         :auto-preamble t
+         )
+
+        ("org-howto-static"
+         :base-directory "~/proj/org-howto"
+         :base-extension "md\\|css\\|html\\|js\\|svg\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
+         :publishing-directory "~/proj/public_html/org-howto"
+         :recursive t
+         :publishing-function org-publish-attachment
+         )
+
+        ;; ----- non-public org stuff -----
+
+        ("org-private"
+         :components ("org-private-notes" "org-private-static"))
+
+        ("org-private-notes"
+         :base-directory "~/proj/org-private"
+         :base-extension "org"
+         :publishing-directory "~/proj/private_html/org-private"
+         :recursive t
+         :publishing-function org-html-publish-to-html
+         :headling-levels 4
+         :auto-preamble t
+         )
+
+        ("org-private-static"
+         :base-directory "~/proj/org-private"
+         :base-extension "md\\|css\\|html\\|js\\|svg\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
+         :publishing-directory "~/proj/private_html/org-private"
+         :recursive t
+         :publishing-function org-publish-attachment
+         )
+        ))
+#+end_src
+
+*** babel setup
+
+For literate programming -- execute code blocks, written in various languages, embedded in =.org= files
+
+#+begin_src elisp
+;; ----------------------------------------------------------------
+;; org-mode babel setup
+;; (execute dot/ditaa/bash/c++ etc. from .org code blocks)
+;;
+;; see
+;;   [[https://orgmode.org/worg/org-contrib/babel/intro.html]]
+;;   [[https://orgmode.org/worg/org-contrib/babel/languages/index.html]]
+;;
+;; code block:
+;;   #+begin_src ${language} ${switches} ${headerarguments}
+;;     ${body}
+;;   #+end_src
+;;
+;; use header argument
+;;   :results output
+;; to insert code-block output (i.e. contents of stdout) into .org file below code block
+;;
+;; use
+;;   :results value
+;; to just take value of last statement
+;;
+;; use
+;;   :session
+;; to share language sub-process across code-blocks.
+;;
+;; can use
+;;   #+name: foo
+;; to name an org-mode table;  then:
+;;   #+begin_src ... :var myfreevar=foo
+;;     ...
+;;   #+end_src
+;; with body mentioning myfreevar;  .org will substitute foo
+;;
+;; can do inline coode block with
+;;   src_<${lang}>{${code}} or src_<${lang}[${args}]{${code}}
+;; e.g.
+;;   src_python[:session]{10*x}
+;;
+;; notes:
+;;   [C-c C-v] org-babel prefix
+;;   [C-c C-v b] -- evaluate code blocks in buffer
+;;   [C-c C-v s] -- evaluate code blocks in subtree
+;;   [C-c C-v e] -- evaluate code block at point
+;;   [C-c '] M-x org-edit-src-code -- puts code block in new buffer with appropriate mode activated
+;;   [C-c M-b p] M-x org-babel-expand-src-block -- show expanded code block prior to evaluation
+;;   (org-babel-lob-ingest "path/to/file.org") to share code blogs as 'library'
+
+(org-babel-do-load-languages
+ 'org-babel-load-languages
+ '((dot . t)  ; graphviz [[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html]] see also graphviz-dot-mode
+   ))
+#+end_src
+
+** emacsclient
+
+#+begin_src elisp
+  ;; + set EDITOR=emacsclient in shell
+
+  (server-start)
+#+end_src
