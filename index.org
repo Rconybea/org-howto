@@ -32,6 +32,8 @@
   #+end_example
 
 * Contents
+  - [[file:lessons/til.org][TIL]] lessons learned
+
   - [[file:env/development-environment.org][c++ development environment]] emacs/lsp/c++/cmake/nix/github/docker
     - [[file:env/emacs-setup.org][.emacs walkthrough]]
     - [[file:env/org-mode-resources.org][org-mode resources]]

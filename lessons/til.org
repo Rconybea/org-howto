@@ -1,0 +1,171 @@
+#+title: Today I Learned
+# org-publish options
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+# +html_link_home: index.html
+
+* cmake
+
+** cmake handling of header-only library dependencies (7oct2023)
+
+*** Setup
+
+- NOTE: also asked on stack overflow [[https://stackoverflow.com/questions/77251201/cmake-regular-shared-library-depending-on-a-header-only-interface-library][here]]
+
+- cmake version 3.25.3
+
+- Must introduce a header-only library like this:
+  #+begin_src cmake
+  add_library(foo INTERFACE)
+  #+end_src
+  (instead of ~add_library(foo SHARED)~ or ~add_library(foo STATIC)~)
+
+- Must specify include directories for a header-only library like this:
+  #+begin_src cmake
+    target_include_directories(
+        foo INTERFACE
+        $<INSTALL_INTERFACE:path/to/include>
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/path/to/include>)
+  #+end_src
+
+  cmake enforces this explicitly;   gives error
+  #+begin_example
+  target_include_directories may only set INTERFACE properties on INTERFACE targets
+  #+end_example
+
+- Must specify dependency on a header-only library like this:
+  #+begin_src cmake
+    target_link_libraries(bar INTERFACE foo))
+  #+end_src
+  (instead of ~target_link_libraries(bar PUBLIC foo)~)
+
+  cmake enforces this explicitly;   gives error
+  #+begin_example
+  INTERFACE library can only be used with the INTERFACE keyword of target_link_libraries
+  #+end_example
+
+- Expected behavior:
+  this is sufficient for compilation of ~bar~ to tell compiler about include paths for ~foo~:
+
+  #+begin_example
+  gcc -Ipath/to/foo bar.cpp
+  #+end_example
+
+  This expectation is satisfied for regular non-INTERFACE libraries.
+
+*** Problem
+
+- compilation fails to supply include paths for depended-on ~foo~ when compiling depending-on ~bar~,
+  if ~bar~ is a regular library
+
+- predicted cause:
+  1. for an INTERFACE library,   cmake uses property ~INTERFACE_INCLUDE_DIRECTORIES~;
+     it does not populate ~INCLUDE_DIRECTORIES~.
+  2. ~target_link_libraries~ when applied to a ~STATIC~ or ~SHARED~ target,  picks up
+     the ~INCLUDE_DIRECTORIES~ property for the depended-on target,
+     while ignoring the ~INTERFACE_INCLUDE_DIRECTORIES~ property.
+
+*** Workaround
+
+- when depending on a header-only library,  explictly incorporate depended-on ~INTERFACE_INCLUDE_DIRECTORIES~
+  to ~INCLUDE_DIRECTORIES~:
+
+  #+begin_src cmake
+    macro(dependency_headeronly target dep)
+        target_link_libraries(${target} INTERFACE ${dep})
+
+        get_target_property(dependency_headeronly__tmp ${dep} INTERFACE_INCLUDE_DIRECTORIES)
+        set_property(
+            TARGET ${target}
+            APPEND PROPERTY INCLUDE_DIRECTORIES ${dependency_headeronly__tmp})
+    endmacro()
+  #+end_src
+
+** pybind11 link difficulties with transitive library dependencies (7oct2023)
+
+*** Setup
+
+- cmake version 3.25.3
+- pybind11 version ???
+- nix build (see https://github.com:rconybea/xo-nix2)
+  Consequences of nix build:
+  - Each package installed to a separate directory -- no "common swimming pool" like =/usr/lib=
+  - Implies install directory always distinct from any directory containing build inputs
+  - Tends to reveal oversights in toolchain,  as we'll see below
+
+- pybind library (=xo-pyreflect=) with dependency on a separate library (=xo-reflect=),
+  that in turn has secondary dependencies (=xo-refcnt=, =xo-indentlog=).
+  Note that =xo-indentlog= is header-only.
+
+- Expect this cmake script to work:
+  #+begin_src cmake
+    find_package(pybind11)
+    pybind11_add_module(pyreflect pyreflect.cpp)
+
+    find_package(reflect CONFIG REQUIRED)
+    target_link_libraries(pyreflect PUBLIC reflect)
+  #+end_src
+
+*** Problem
+
+- Instead, link fails.   Link line something like:
+  #+begin_example
+  g++ -fPIC ... -o pyreflect.cpython-311-x86_64-linux-gnu.so /path/to/libreflect.so -lrefcnt -lindentlog
+  #+end_example
+
+  Two problems here:
+  1. directory containing =librefcnt.so= isn't on the link line (no =-L/path/to/refcnt/dir= for example).
+  2. =libindentlog.so= does not exist,  since =indentlog= is header-only
+
+- Looked into intermediate outputs like =lib/cmake/reflectTargets.cmake=,  excerpt:
+  #+begin_src cmake
+      set_target_properties(reflect PROPERTIES
+          INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
+          INTERFACE_LINK_LIBRARIES "indentlog;refcnt"
+      )
+  #+end_src
+  It's not obvious how =xo_pyreflect= can know that =indentlog= is header-only,  while =refcnt= isn't
+  (though could presumably extract the relevant libdir from =find_package()= with some work).
+
+*** Workaround
+
+- Recognize that =pyreflect= link shouldn't need =refcnt= on the link line,
+  since =libreflect.so= has a =DT_NEEDED= entry for it.
+
+  #+begin_example
+  $ readelf -d /path/to/libreflect.so
+
+  Dynamic section at offset 0x17860 contains 34 entries:
+    Tag        Type                         Name/Value
+   0x0000000000000001 (NEEDED)             Shared library: [librefcnt.so.1]
+  ...
+  #+end_example
+
+- When building =pyreflect=,  suppress transitive dependencies
+  For example:
+
+  #+begin_src cmake
+    # xo_cxx.cmake
+    macro(xo_pybind11_dependency target dep)
+        find_package(${dep} CONFIG REQUIRED)
+        set_property(TARGET ${dep} PROPERTY INTERFACE_LINK_LIBRARIES "")
+        target_link_libraries(${target} PUBLIC ${dep})
+    endmacro()
+  #+end_src
+
+  Then in =.cmake= for =pyreflect=,  something equivalent to:
+
+  #+begin_src cmake
+    pybind11_add_module(pyreflect pyreflect.cpp)
+    xo_pybind11_dependency(pyreflect reflect)
+  #+end_src
