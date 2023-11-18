@@ -8,10 +8,11 @@
 #+startup: showall
 #
 # html exporter options
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
 #+language: en
-#+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
-#+html_head: <link rel="stylesheet" type="text/css" href="/web/css/notebook.css" />
-#+html_link_home: index.html
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/notebook.css" />
+#+html_link_home: /web/index.html
 
 * Introduction
   Notes on setup for my primary desktop
@@ -23,7 +24,7 @@
       subgraph cluster_laptop {
         label="roly-laptop-21";
         terminal;
-      }   
+      }
       subgraph cluster_w11 {
         label="roly-desktop-23";
         w11_sshd
@@ -79,7 +80,7 @@
       #+begin_example
       > Add-WindowsCapability -Online -Name OpenSSH.Server~~~~0.0.1.0
 
-      Path          : 
+      Path          :
       Online        : True
       RestartNeeded : False
       #+end_example
@@ -95,7 +96,7 @@
       #+begin_example
       > Set-Service -Name sshd -StartupType 'Automatic'
       #+end_example
-      
+
    5. =ssh-agent= also needs assistance
 
       #+begin_example
@@ -146,7 +147,7 @@
        $ cat /etc/ssh/sshd_config | grep -i port
        #Port 22
        #+end_example
-       
+
        listen on port 2022 instead,
        since =sshd= run by windows11 occupies port 22 already
 

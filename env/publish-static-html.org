@@ -12,8 +12,8 @@
 #+language: en
 # +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
-# +html_link_home: index.html
-# +html_link_up: development-environment.html
+#+html_link_home: /web/index.html
+#+html_link_up: /web/env/development-environment.html
 
 * Publish Static HTML
     In particular,  including this content.

@@ -1,4 +1,6 @@
 #+title: github continuous integration
+#+author: Roland Conybeare
+#
 # org-publish options
 # ^:{}  require a_{b} before assuming that b should be subscripted.
 #       without this option a_b will automatically subscript b.
@@ -12,8 +14,8 @@
 #+language: en
 # #+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # #+html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
-# +html_link_home: index.html
-# +html_link_up: development-environment.html
+#+html_link_home: /web/index.html
+#+html_link_up: /web/env/development-environment.html
 
 * Motivation
 
@@ -401,6 +403,7 @@ Prepare minimal custom docker container using a nix flake.
           docker image push ghcr.io/rconybea/docker-nix-hello:v1
         #+end_src
      7. make package public from package's settings link
+
 
 **** Workflow Using Custom Container
 
