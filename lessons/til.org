@@ -1,5 +1,9 @@
-#+title: Today I Learned
+#+title: Today I Learned - lessons from building a C++ development stack
+#+tags: @c++ @cmake @git @submodule @pybind11
+#+description: lessons learned while building cooperating c++ libraries using nix|cmake|pybind11|eigen amongst others
+#
 # org-publish options
+#
 # ^:{}  require a_{b} before assuming that b should be subscripted.
 #       without this option a_b will automatically subscript b.
 #+options: ^:{}
@@ -9,14 +13,174 @@
 #
 # html exporter options
 #+language: en
+#+keywords: c++ cmake git submodule pybind11 eigen
+#+keywords: transitive-library-dependency
 #+setupfile: ../ext/fniessen/theme-readtheorg.setup
 # +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
-# +html_link_home: index.html
+#+html_link_home: index.html
+
+* wsl (windows services for linux)
+
+** x11 linux apps wedged after WSL update 2.0.9.0
+
+*** Setup
+
+- PC rebooted overnight;   found it had installed WSL 2.0.9.0
+
+*** Problem
+
+- linux x11 apps unusable;  all seem to draw trash on screen in response to mouse events.
+  - writeup here: [[https://answers.microsoft.com/en-us/windows/forum/all/linux-x11-apps-wedged-after-wsl-update-2090/8b659f22-16d6-4d37-94a2-b4e9521fb82e][linux-x11-appws-wedged-after-wsl-update-2090]]
+  - 30sec youtube video here: [[https://youtu.be/ZSu0HNnf00g][windows11: WSL 16nov23 update breaks x11 apps]]
+
+*** Details
+
+- can see update history:
+  - =Control Panel|Programs|Programs and Features|(sort on Installed On)=
+  - =Settings|Windows Update|Update History= (windows updates only - not sortable by date afaict)
+
+*** Solution
+
+- force WSL vm to shutdown + restart
+
+  #+begin_example
+  PS C:\Users\Rcony> wsl --shutdown
+  PS C:\Users\Rcony> wsl --user roland
+  #+end_example
 
 * cmake
 
+** inconsistent eigen package (25oct2023)
+
+*** Setup
+
+- library [[https://github.com/Rconybea/xo-kalmanfilter][xo-kalmanfilter]] depends on eigen
+- library [[https://github.com/Rconybea/xo-pykalmanfilter][xo-pykalmanfilter]] depends on =xo-kalmanfilter=
+- the project [[https://github.com/Rconybea/xo][xo]] incorporates both codebases (along with others) into single umbrella source tree.
+- alternatively, can build+install libraries independently (in bottom-up dependency order),
+  using cmake =find_package()= support provided by each library build.
+  Labeling this a 'vanilla build', since it follows standard (cmake-centric) practice for installing independent libraries.
+
+*** Problem
+
+- submodule build works as expected;   compile flags include required =-Ipath/to/eigen/eigen3=,
+  so c++ code like this compiles
+  #+begin_src c++
+    #include <Eigen/Dense>
+  #+end_src
+
+- vanilla build fails:
+  when compiling xo-pykalmanfilter,  the header path for eigen is given as =-Ipath/to/eigen=
+  instead of =-Ipath/to/eigen/eigen3=.
+
+*** Details
+
+- =xo-kalmanfilter= specifies eigen dependency in the approved manner:
+
+  #+begin_src cmake
+    # xo-kalmanfilter/src/kalmanfilter/CMakeLists.txt
+    set(SELF_LIB xo_kalmanfilter)
+    ..
+    xo_external_target_dependency(${SELF_LIB} Eigen3 Eigen3::Eigen)
+  #+end_src
+
+  which expands as if we had written:
+  #+begin_src cmake
+    find_package(Eigen3 CONFIG REQUIRED)
+    target_link_libraries(${SELF_LIB} PUBLIC Eigen3::Eigen)
+  #+end_src
+
+  This works as expected in submodule build.
+  In submodule build, codebases =xo-kalmanfilter= and =xo-pykalmanfilter= (amongst others) are incorporated
+  into a single source tree:
+
+  #+begin_src cmake
+    # xo-sm2/CMakeLists.txt
+    set(XO_SUBMODULE_BUILD True)
+    ..
+    add_subdirectory(repo/xo-kalmanfilter)
+    add_subdirectory(repo/xo-pykalmanfilter)
+  #+end_src
+
+- =xo-pykalmanfilter= specifies =xo-kalmanfilter= dependency:
+
+  #+begin_src cmake
+    # xo-pykalmanfilter/src/pykalmanfilter/CMakeLists.txt
+    set(SELF_LIB pykalmanfilter)
+    ..
+    xo_pybind11_dependency(${SELF_LIB} xo_kalmanfilter)
+  #+end_src
+
+  which expands differently,  depending on build type.
+  In submodule build,  as if we had written:
+
+  #+begin_src cmake
+    target_include_directories(${SELF_LIB} PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/repo/xo_kalmanfilter/include>)
+    target_include_directories(${SELF_LIB} PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/repo/xo_kalmanfilter/include>)
+    target_link_libraries(${SELF_LIB} PUBLIC xo_kalmanfilter)
+  #+end_src
+
+  In vanilla build,  =xo_pybind11_dependency()= expands differently:
+
+  #+begin_src cmake
+    find_package(xo_kalmanfilter CONFIG REQUIRED)
+    ..
+    target_link_libraries(${SELF_LIB} PUBLIC xo_kalmanfilter)
+  #+end_src
+
+- =xo-kalmanfilter= provides support for cmake =find_package()=:
+
+  #+begin_src cmake
+    # xo-kalmanfilter/cmake/xo_kalmanfilterConfig.cmake.in
+
+    @PACKAGE_INIT@
+
+    include(CMakeFindDependencyMacro)
+    find_dependency(reactor)
+    find_dependency(eigen3)
+
+    include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+    check_required_components("@PROJECT_NAME@")
+  #+end_src
+
+  and generated =xo_kalmanfilterTargets.cmake= file contains:
+
+  #+begin_src cmake
+    # Create imported target xo_kalmanfilter
+    add_library(xo_kalmanfilter SHARED IMPORTED)
+
+    set_target_properties(xo_kalmanfilter PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include;${_IMPORT_PREFIX}/include/xo/kalmanfilter"
+      INTERFACE_LINK_LIBRARIES "reactor;Eigen3::Eigen"
+    )
+  #+end_src
+
+  which.. doesn't look wrong :)
+
+*** Workaround
+
+  Sufficient to restate the eigen dependency in =xo-pykalmanfilter=:
+
+  #+begin_src cmake
+    # xo_pykalmanfilter/src/pykalmanfilter/CMakeLists.txt
+    set(SELF_LIB pykalmanfilter)
+    ...
+    xo_external_target_dependency(${SELF_LIB} Eigen3 Eigen3::Eigen)
+  #+end_src
+
 ** cmake handling of header-only library dependencies (7oct2023)
+
+*** Update
+
+My original investigation mistaken.
+It turns out I didn't understand that cmake error from ~target_link_libraries()~:
+
+#+begin_example
+  INTERFACE library can only be used with the INTERFACE keyword of target_link_libraries
+#+end_example
+
+applies to the /depended-on/ library (3rd argument),  not the /depending/ library (1st argument).
 
 *** Setup
 
