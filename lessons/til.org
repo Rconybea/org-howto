@@ -49,6 +49,8 @@
   PS C:\Users\Rcony> wsl --user roland
   #+end_example
 
+  Note: presumably wsl VM state is preserved across reboot,   since rebooting PC had no effect here.
+
 * cmake
 
 ** inconsistent eigen package (25oct2023)
