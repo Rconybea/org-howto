@@ -1,0 +1,75 @@
+#+title: gpg setup
+# org-publish options
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
+#+language: en
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/notebook.css" />
+#+html_link_home: /web/index.html
+
+* Introduction
+
+  Setting up GPG to avoid needing plaintext passwords in certain configuration files.
+  Originally introduced this when configuring =mbsync= for email setup.
+
+* Generate Keypair
+
+  Here (afaict) email address is the key-name for a signing authority
+
+  #+begin_example
+    $ gpg --gen-key
+    Real username: Roland Conybeare
+    Email address: replacewithsomething@somewhere.com
+  #+end_example
+
+  This will populate files under =~/.gnupg=
+
+  View public keys:
+
+  #+begin_example
+    $ gpg -k
+    /home/roland/.gnupg/pubring.kbx
+    -------------------------------
+    pub   rsa3072 2024-01-11 [SC] [expires: 2026-01-10]
+          158495DF3E604E65D12B85D4F1C0105549B5F0D1
+    uid           [ultimate] Roland Conybeare <replacewithsomething@somewhere.com>
+    sub   rsa3072 2024-01-11 [E] [expires: 2026-01-10]
+  #+end_example
+
+* Encrypt Secret
+
+  Using this to encrypt an email server password:
+
+  #+begin_example
+    $ gpg --recipient replacewithsomething@somewhere.com -a -o .hushmail.gpg --encrypt
+    replacewithpassword
+  #+end_example
+
+  Resulting in encrypted file like:
+
+  #+begin_example
+    $ cat .hushmail.gpg
+    -----BEGIN PGP MESSAGE-----
+
+    hQGMA47kE/R9+tnNAQwA0EHQ11186CQ6tPPhQTidm4i1XBa2hdYi1xsh13jcJsod
+    ...
+    OlLUNkVxGMF3y2hM8sHNOtFKOW9I3qoViqCEufGJD8m/x9Ev9whgx59c20xSkGg=
+    =9dw5
+    -----END PGP MESSAGE-----
+  #+end_example
+
+* Decrypt Secret
+
+  Recover secret like this:
+
+  #+begin_example
+    $ gpg -q --for-your-eyes-only --no-tty -d .hushmail.gpg
+    replacewithpassword
+  #+end_example

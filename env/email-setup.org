@@ -1,0 +1,173 @@
+#+title: email setup
+# org-publish options
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
+#+language: en
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/notebook.css" />
+#+html_link_home: /web/index.html
+
+* Introduction
+  Setting up email automation on my primary desktop.
+
+  After some investigation settled on:
+  - isync :: to synchronize provider email with a maildir tree
+  - mu :: for offline email indexing
+  - mu4e :: emacs integration with =mu= (provided along with =mu=)
+
+  All of these available from nixpkgs.
+
+** Links
+  - https://anarc.at/blog/2021-11-21-mbsync-vs-offlineimap/
+  - https://wiredspace.de/blog/mbsync/
+  - https://wiki.archlinux.org/title/Isync
+  - https://www.djcbsoftware.nl/code/mu
+
+* Scaffold Maildir Tree
+
+  #+begin_example
+  $ mkdir -p ~/.mail/hushmail
+  #+end_example
+
+* Isync Setup
+
+  Install isync into shell environment;  may want to later set this up to poll periodically.
+
+  #+begin_example
+  $ nix-env -i isync
+  #+end_example
+
+  configuration file (anonymized):
+
+  #+begin_example
+  # ~/.mbsyncrc
+
+  IMAPAccount hushmail
+  # address to connect
+  Host imap.hushmail.com
+  User replacewithuser@hushmail.com
+  #Pass replacewithpassword
+  # encrypted with something like
+  # $ echo replacewithpassword | gpg --recipient mygpgusername -a -o ~/.hushmail.gpg --encrypt
+  PassCmd "gpg --no-tty --for-your-eyes-only -dq ~/.hushmail.gpg"
+  # enable TLS
+  SSLType IMAPS
+  CertificateFile /etc/ssl/certs/ca-certificates.crt
+
+  # remote
+  IMAPStore hushmail-remote
+  Account hushmail
+
+  # local
+  MaildirStore hushmail-local
+  Subfolders Verbatim
+  # must have trailing /
+  Path ~/.mail/hushmail/
+  Inbox ~/.mail/hushmail/Inbox
+
+  Channel hushmail
+  Far :hushmail-remote:
+  Near :hushmail-local:
+  # include everything for now
+  Patterns *
+  # auto-create missing mailboxes
+  Create Both
+  # delete messages (enable after seeing sync work)
+  Expunge Both
+  # save synchronization state
+  SyncState *
+  # propagate mailbox deletion (enable after seeing sync work)
+  Remove both
+  #+end_example
+
+* Isync Use
+
+  sync email folders:
+
+  #+begin_example
+  $ mbsync -a    # of mbsync hushmail
+  #+end_example
+
+* Mu Setup
+
+  Installed =mu= via nix flake for my project =xo-nix2=.
+  See https://github.com/Rconybea/xo-nix2/blob/main/flake.nix.
+
+  This accomplished by adding =mu=, =mu4easy= to =devShells.packages=:
+
+  #+begin_src nix
+    devShells = {
+      default = pkgs.mkShell.override
+        { stdenv = env; }
+        { packages = [ ...
+                       pkgs.mu
+                       pkgs.mu4easy
+                       ...
+                       ];
+          };
+      };
+  #+end_src
+
+  Installing this way ensures coordinated mu,mu4easy versions
+
+  Initialize mu's database:
+
+  #+begin_example
+    $ mu init --my-address=replacewithuser@gmail.com --maildir=/home/roland/.mail
+  #+end_example
+
+  Then in =~/.emacs=:
+
+  #+begin_src emacs-lisp
+    ;; ----------------------------------------------------------------
+    ;; email reading/sending
+    ;;
+    ;; sync email with
+    ;;   $ mbsync -a
+
+    (require 'mu4e)
+
+    (setq mail-user-agent 'mu4e-user-agent)
+    (setq mu4e-sent-folder "/sent")
+    (setq mu4e-drafts-folder "/drafts")
+    (setq mu4e-trash-folder "/trash")
+  #+end_src
+
+  Now can browse local email folders from emacs with =M-x mu4e=
+
+  Sending email requires additional configuration in =~/.emacs=:
+
+  #+begin_src emacs-lisp
+    (require 'smtpmail)
+
+    (setq user-mail-address "replacewithuser@gmail.com"
+          user-full-name "Roland Conybeare")
+
+    (setq message-send-mail-function 'smtpmail-send-it)
+
+    (setq smtpmail-stream-type 'starttls
+          ;;smtpmail-default-smtp-server "smtp.hushmail.com"
+          smtpmail-smtp-server "smtp.gmail.com"
+          smtpmail-smtp-service 587
+          )
+
+    (setq message-kill-buffer-on-exit t)
+  #+end_src
+
+  We also need =~/.authinfo= to provide login credentials
+  #+begin_example
+  machine smtp.gmail.com login replacewithuser@gmail.com port 587 password replacewithpassword
+  #+end_example
+
+  Here =replacewithpassword= needs to be a "google app password".
+
+  Obtain this from gmail.com -> account settings -> security -> 2-step verification -> app passwords
+
+  Now can send email with =C-x m=
