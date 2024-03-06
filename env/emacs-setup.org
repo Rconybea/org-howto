@@ -12,6 +12,7 @@
 #+language: en
 # +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#+keywords: emacs emacs-setup lsp org-mode babel projectile yasnippet
 #+html_link_home: /web/index.html
 #+html_link_up: /web/env/development-environment.html
 
@@ -620,58 +621,131 @@ Syntax highlighting in yaml files
 For literate programming -- execute code blocks, written in various languages, embedded in =.org= files
 
 #+begin_src elisp
-;; ----------------------------------------------------------------
-;; org-mode babel setup
-;; (execute dot/ditaa/bash/c++ etc. from .org code blocks)
-;;
-;; see
-;;   [[https://orgmode.org/worg/org-contrib/babel/intro.html]]
-;;   [[https://orgmode.org/worg/org-contrib/babel/languages/index.html]]
-;;
-;; code block:
-;;   #+begin_src ${language} ${switches} ${headerarguments}
-;;     ${body}
-;;   #+end_src
-;;
-;; use header argument
-;;   :results output
-;; to insert code-block output (i.e. contents of stdout) into .org file below code block
-;;
-;; use
-;;   :results value
-;; to just take value of last statement
-;;
-;; use
-;;   :session
-;; to share language sub-process across code-blocks.
-;;
-;; can use
-;;   #+name: foo
-;; to name an org-mode table;  then:
-;;   #+begin_src ... :var myfreevar=foo
-;;     ...
-;;   #+end_src
-;; with body mentioning myfreevar;  .org will substitute foo
-;;
-;; can do inline coode block with
-;;   src_<${lang}>{${code}} or src_<${lang}[${args}]{${code}}
-;; e.g.
-;;   src_python[:session]{10*x}
-;;
-;; notes:
-;;   [C-c C-v] org-babel prefix
-;;   [C-c C-v b] -- evaluate code blocks in buffer
-;;   [C-c C-v s] -- evaluate code blocks in subtree
-;;   [C-c C-v e] -- evaluate code block at point
-;;   [C-c '] M-x org-edit-src-code -- puts code block in new buffer with appropriate mode activated
-;;   [C-c M-b p] M-x org-babel-expand-src-block -- show expanded code block prior to evaluation
-;;   (org-babel-lob-ingest "path/to/file.org") to share code blogs as 'library'
+  ;; ----------------------------------------------------------------
+  ;; org-mode babel setup
+  ;; (execute dot/ditaa/bash/c++ etc. from .org code blocks)
+  ;;
+  ;; see
+  ;;   [[https://orgmode.org/worg/org-contrib/babel/intro.html]]
+  ;;   [[https://orgmode.org/worg/org-contrib/babel/languages/index.html]]
+  ;;
+  ;; code block:
+  ;;   #+begin_src ${language} ${switches} ${headerarguments}
+  ;;     ${body}
+  ;;   #+end_src
+  ;;
+  ;; use header argument
+  ;;   :results output
+  ;; to insert code-block output (i.e. contents of stdout) into .org file below code block
+  ;;
+  ;; use
+  ;;   :results value
+  ;; to just take value of last statement
+  ;;
+  ;; use
+  ;;   :session
+  ;; to share language sub-process across code-blocks.
+  ;;
+  ;; can use
+  ;;   #+name: foo
+  ;; to name an org-mode table;  then:
+  ;;   #+begin_src ... :var myfreevar=foo
+  ;;     ...
+  ;;   #+end_src
+  ;; with body mentioning myfreevar;  .org will substitute foo
+  ;;
+  ;; can do inline coode block with
+  ;;   src_<${lang}>{${code}} or src_<${lang}[${args}]{${code}}
+  ;; e.g.
+  ;;   src_python[:session]{10*x}
+  ;;
+  ;; notes:
+  ;;   [C-c C-v] org-babel prefix
+  ;;   [C-c C-v b] -- evaluate code blocks in buffer
+  ;;   [C-c C-v s] -- evaluate code blocks in subtree
+  ;;   [C-c C-v e] -- evaluate code block at point
+  ;;   [C-c '] M-x org-edit-src-code -- puts code block in new buffer with appropriate mode activated
+  ;;   [C-c M-b p] M-x org-babel-expand-src-block -- show expanded code block prior to evaluation
+  ;;   (org-babel-lob-ingest "path/to/file.org") to share code blogs as 'library'
 
-(org-babel-do-load-languages
- 'org-babel-load-languages
- '((dot . t)  ; graphviz [[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html]] see also graphviz-dot-mode
-   ))
+  (org-babel-do-load-languages
+   'org-babel-load-languages
+   '(
+     (ditaa .t) ; "diagrams throug ascii art"
+     (dot . t)  ; graphviz [[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html]] see also graphviz-dot-mode
+     ))
 #+end_src
+
+For =ditaa=, need some paths.  Nix makes these obscure, which makes fixing the hacky setup here inconvenient.
+
+#+begin_src elisp
+;; extracted from
+;;   cat $(which ditaa)
+;; 
+;;
+(setq org-babel-ditaa-java-cmd "/nix/store/chcmn5mpj3l5jzxfs2krqximz3276i8v-openjdk-19.0.2+7/bin/java")
+(setq org-ditaa-jar-path "/nix/store/gmfa1zjmn0gjgl04kd5fvs1fj49x6dj4-ditaa-0.11.0/lib/ditaa.jar")
+;; (setq org-ditaa-eps-jar-path "path/to/related/jar") ;; not using, but if so would need:
+#+end_src
+
+** email
+
+*** incoming mail
+
+Using =notmuch= for incoming mail (=notmuch= configured using =notmuch setup=)
+
+#+begin_src emacs_lisp
+  ;; ----------------------------------------------------------------
+  ;; local email storage
+  ;;
+  ;; 1. sync email (e.g. fetch remote emails) with
+  ;;   $ mbsync -a
+  ;;
+  ;; 2. apply rules locally (move emails to folders etc.)  with
+  ;;   $ cleanmbox
+  ;;
+  ;; 3. sync email again (e.g. propagate changes back to remote mailboxes)
+  ;;   $ mbsync -a
+  ;;
+  ;; 4. to read email from local copy,  use
+  ;;   M-x notmuch
+  ;;
+  ;;   show       ;; to see everything
+  ;;
+  ;; use [M-x customize-group RET notmuch RET] to customize
+  ;; use [M-x notmuch] to invoke
+  ;; in a [*notmuch-hello*] buffer,  use
+  ;;   folder:gmail/.health
+  ;; to see messages in
+  ;;   ${MAILDIR}/gmail/.health
+
+  (require 'notmuch)
+#+end_src
+
+*** outgoing mail
+
+#+begin_src emacs_lisp
+  (require 'smtpmail)
+
+  (setq user-mail-address "alice@gmail.com"
+        user-full-name "Alice Exampleton")
+
+  (setq message-send-mail-function 'smtpmail-send-it)
+
+  (setq smtpmail-stream-type 'starttls
+        smtpmail-smtp-server "smtp.gmail.com"
+        smtpmail-smtp-service 587
+        )
+
+  ;; prevent send buffers accumulating
+  (setq message-kill-buffer-on-exit t)
+#+end_src
+
+Note: =smtpmail= also requires credentials in =~/.authinfo=:
+
+#+begin_example
+machine smtp.gmail.com login rconybeare@gmail.com port 587 password somegoogleapppassword
+#+end_example
 
 ** emacsclient
 

@@ -54,3 +54,12 @@ To serve html content locally:
 ```
 python3 -m http.server 8000 --directory ~/proj/public_html/org-howto
 ```
+
+To publish updated html tree to github
+```
+cd ~/proj/public_html/org-howto
+git add .
+git commit -m update
+git push
+```
+

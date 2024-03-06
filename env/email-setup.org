@@ -12,31 +12,117 @@
 #+language: en
 # +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # +html_head: <link rel="stylesheet" type="text/css" href="/web/css/notebook.css" />
+#+keywords: email maildir++ automation isync notmuch emacs imap
 #+html_link_home: /web/index.html
+#+html_link_up: /web/index.html
 
 * Introduction
+
   Setting up email automation on my primary desktop.
 
-  After some investigation settled on:
-  - isync :: to synchronize provider email with a maildir tree
-  - mu :: for offline email indexing
-  - mu4e :: emacs integration with =mu= (provided along with =mu=)
+** TL;DR
 
-  All of these available from nixpkgs.
-
-** Links
-  - https://anarc.at/blog/2021-11-21-mbsync-vs-offlineimap/
-  - https://wiredspace.de/blog/mbsync/
-  - https://wiki.archlinux.org/title/Isync
-  - https://www.djcbsoftware.nl/code/mu
-
-* Scaffold Maildir Tree
+  To tidy emails:
 
   #+begin_example
+  $ mbsync -a --pull  # fetch new emails from providers
+  $ cleanupmbox       # apply automatic rules (on local copy)
+  $ mbsync -a --push  # propagate deletes/moves back to providers
+  $ notmuch new       # recognize new mail
+  #+end_example
+
+  Read email locally (with favored =maildir++=-compliant reader),
+  and/or enjoy tidied email on provider's system (e.g. gmail in browser)
+
+  Alternatively can search from command line:
+  #+begin_example
+  $ notmuch search sometext
+  #+end_example
+
+** Overview
+
+  After some investigation settled on:
+  - isync :: (aka =mbsync=) to synchronize provider email with a maildir tree
+  - notmuch :: for offline email indexing/search.
+  - notmuch-emacs :: emacs module for local email reading
+
+  Wrote a custom python script =cleanupmbox= to operate programatically
+  on the local =MAILDIR= tree.   Script has enough content to deserve its own page,
+  next after this one.
+
+  #+name: email-overview
+  #+header: :exports results
+  #+begin_src ditaa :file img/email-overview.png
+
+                                       /-------------\
+                                       | cleanupmbox |
+                                       \-------------/
+                                            ^    .
+                                            |    .
+                                            |    .   +--------------------------------+
+                                            |    ... | config                         |
+                                            |        |  ~/.config/cleanmbox/rules.csv |
+                                            |        +--------------------------------+
+                                            |
+                                            |
+                                            |                     /-------\
+                                            |                     | emacs |
+                                            |                     \-------/
+                                            |                         ^
+                                            |                         |
+                                            |                         |
+                                            v                         |
+                                 +-----=--------------------+         |
+    +----------+    /------\     |   +------------------+   |         |
+    |   gmail  |<---+mbsync+---->|   | MAILDIR/gmail    |   |         |
+    +----------+    \------/     |   +------------------+   |         v
+                       .         |                          |     /-------\
+                       .         |                          +---->|notmuch|
+                       .         |                          |     \-------/
+    +----------+    /------\     |   +------------------+   |         ^
+    | hushmail |<---+mbsync+---->|   | MAILDIR/hushmail |   |         |
+    +----------+    \------/     |   +------------------+   |         |
+                       .         +--------------------------+         |
+                       .                                              |
+                       .                                              v
+                +--------------+                        +---------------------------+
+                | config       |                        | tag database              |
+                |  ~/.mbsyncrc |                        |   MAILDIR/.notmuch/xapian |
+                +--------------+                        +---------------------------+
+  #+end_src
+
+  #+RESULTS: email-overview
+  [[file:img/email-overview.png]]
+
+  Notes:
+  - =mbsync= configuration in =~/.mbsyncrc=
+  - emails kept under =~/.mail=
+  - =cleanmbox= symlinks to =~/proj/env/bin/cleanupmbox.py=
+  - =cleanmbox= rules in =~/.config/cleanmbox/rules.csv=
+
+** Goals
+
+  I had the following goals:
+  - automate email handling: want ability to move emails into folders based on pattern-matching rules
+  - fetch email from multiple providers (gmail, hushmail),  browse from the same filesystem tree.
+  - synchronize email disposition with providers, so that using browser on their site (especially from phone)
+    will provide an up-to-date view.
+
+** Links
+  - https://anarc.at/blog/2021-11-21-mbsync-vs-offlineimap/  isync vs offlineimap,  plus useful example configuration.
+  - https://wiredspace.de/blog/mbsync/
+  - https://wiki.archlinux.org/title/Isync lovely isync configuration examples
+
+* Setup Instructions
+
+** Scaffold Maildir Tree
+
+  #+begin_example
+  $ mkdir -p ~/.mail/gmail
   $ mkdir -p ~/.mail/hushmail
   #+end_example
 
-* Isync Setup
+** Isync Setup
 
   Install isync into shell environment;  may want to later set this up to poll periodically.
 
@@ -44,111 +130,176 @@
   $ nix-env -i isync
   #+end_example
 
-  configuration file (anonymized):
+  Anonymized configuration file:
+
+  hushmail part:
 
   #+begin_example
-  # ~/.mbsyncrc
+    # ~/.mbsyncrc
 
-  IMAPAccount hushmail
-  # address to connect
-  Host imap.hushmail.com
-  User replacewithuser@hushmail.com
-  #Pass replacewithpassword
-  # encrypted with something like
-  # $ echo replacewithpassword | gpg --recipient mygpgusername -a -o ~/.hushmail.gpg --encrypt
-  PassCmd "gpg --no-tty --for-your-eyes-only -dq ~/.hushmail.gpg"
-  # enable TLS
-  SSLType IMAPS
-  CertificateFile /etc/ssl/certs/ca-certificates.crt
+    IMAPAccount hushmail
+    # address to connect
+    Host imap.hushmail.com
+    User replacewithuser@hushmail.com
+    # if you're comfortable with plaintext:
+    #Pass replacewithpassword
+    #
+    # PassCmd value encrypted with something like
+    # $ echo replacewithpassword | gpg --recipient mygpgusername -a -o ~/.hushmail.gpg --encrypt
+    PassCmd "gpg --no-tty --for-your-eyes-only -dq ~/.hushmail.gpg"
+    # enable TLS
+    SSLType IMAPS
+    CertificateFile /etc/ssl/certs/ca-certificates.crt
 
-  # remote
-  IMAPStore hushmail-remote
-  Account hushmail
+    # remote
+    IMAPStore hushmail-remote
+    Account hushmail
 
-  # local
-  MaildirStore hushmail-local
-  Subfolders Verbatim
-  # must have trailing /
-  Path ~/.mail/hushmail/
-  Inbox ~/.mail/hushmail/Inbox
+    # local
+    MaildirStore hushmail-local
+    Subfolders Verbatim
+    # must have trailing /
+    Path ~/.mail/hushmail/
+    Inbox ~/.mail/hushmail/Inbox
 
-  Channel hushmail
-  Far :hushmail-remote:
-  Near :hushmail-local:
-  # include everything for now
-  Patterns *
-  # auto-create missing mailboxes
-  Create Both
-  # delete messages (enable after seeing sync work)
-  Expunge Both
-  # save synchronization state
-  SyncState *
-  # propagate mailbox deletion (enable after seeing sync work)
-  Remove both
+    Channel hushmail
+    Far :hushmail-remote:
+    Near :hushmail-local:
+    # include everything for now
+    Patterns *
+    # auto-create missing mailboxes
+    Create Both
+    # delete messages (enable after seeing sync work)
+    Expunge Both
+    # save synchronization state
+    SyncState *
+    # propagate mailbox deletion (enable after seeing sync work)
+    Remove both
   #+end_example
 
-* Isync Use
-
-  sync email folders:
+  gmail part:
 
   #+begin_example
-  $ mbsync -a    # of mbsync hushmail
+    IMAPAccount gmail
+    Host imap.gmail.com
+    User replacewithuser@gmail.com
+    # encrypted with something like
+    # $ echo replacewithpassword | gpg --recipient mygpgusername -a -o ~/.gmail.gpg --encrypt
+    PassCmd "gpg --no-tty --for-your-eyes-only -dq ~/.gmail.gpg"
+    SSLType IMAPS
+    CertificateFile /etc/ssl/certs/ca-certificates.crt
+
+    # remote
+    IMAPstore gmail-remote
+    Account gmail
+
+    # local
+    MaildirStore gmail-local
+    Subfolders Maildir++
+    Inbox ~/.mail/gmail
+
+    Channel gmail
+    Far :gmail-remote:
+    Near :gmail-local:
+    MaxMessages 15000
+    ExpireUnread yes
+    #
+    # in particular,  excluding:
+    #  [Gmail]/Drafts, [Gmail]/Spam, [Gmail]/Trash
+    #
+    Patterns * ![Gmail]* "[Gmail]/Sent Mail" "[Gmail]/Important" "[Gmail]/Starred" "[GMail]/All Mail"
+    #Patterns *
+    Sync all
+    Create Both
+    Expunge Both
+    SyncState *
+    Remove both
+
   #+end_example
 
-* Mu Setup
+** Isync Use
 
-  Installed =mu= via nix flake for my project =xo-nix2=.
-  See https://github.com/Rconybea/xo-nix2/blob/main/flake.nix.
+  sync email folders from all providers:
+  #+begin_example
+  $ mbsync -a
+  #+end_example
 
-  This accomplished by adding =mu=, =mu4easy= to =devShells.packages=:
+  or to just sync with hushmail provider
+  #+begin_example
+  $ mbsync hushmail
+  #+end_example
+
+  To just propagate changes from gmail to local:
+  #+begin_example
+  $ mbsync gmail --pull
+  #+end_example
+
+  Similarly,  to just propagate changes to hushmail:
+  #+begin_example
+  $ mbsync hushmail --push
+  #+end_example
+
+** Notmuch Setup
+
+  Installed =notmuch= via nix flake in my project =xo-nix2=.
+  see [[https://github.com/rconybea/xo-nix2/blob/mail/flake.nix]]
+
+  Accomplished this by adding =notmuch=, =emacsPackages.notmuch= to =devShells.packages=:
 
   #+begin_src nix
     devShells = {
       default = pkgs.mkShell.override
         { stdenv = env; }
         { packages = [ ...
-                       pkgs.mu
-                       pkgs.mu4easy
+                       pkgs.notmuch
+                       pkgs.emacsPackages.notmuch
                        ...
                        ];
           };
       };
   #+end_src
 
-  Installing this way ensures coordinated mu,mu4easy versions
+  Installing this way ensures that =emacs=, =notmuch= and =notmuch-emacs= versions are coordinated.
 
-  Initialize mu's database:
+  =notmuch= gets setup interactively:
 
   #+begin_example
-    $ mu init --my-address=replacewithuser@gmail.com --maildir=/home/roland/.mail
+  $ notmuch setup
+  Your full name:
+  Your primary email address: alice@gmail.com
+  Additional email address [Press 'Enter' if none]:
+  Top-level directory of your email archive:/home/alice/.mail
+  Tags to apply to all new messages (separated by spaces) [ unread inbox]:
+  Tags to exclude when searching messages (separated by spaces) [ junk]:
   #+end_example
 
-  Then in =~/.emacs=:
+  This creates empty tag database in =MAILDIR=/.notmuch= (=/home/alice/.mail/.notmuch= here)
+
+  Populate tag database with contents of MAILDIR:
+  #+begin_example
+  $ notmuch new
+  #+end_example
+
+  Default =notmuch-emacs= setup is almost trivial.
+  In =~/.emacs=:
 
   #+begin_src emacs-lisp
-    ;; ----------------------------------------------------------------
-    ;; email reading/sending
-    ;;
-    ;; sync email with
-    ;;   $ mbsync -a
-
-    (require 'mu4e)
-
-    (setq mail-user-agent 'mu4e-user-agent)
-    (setq mu4e-sent-folder "/sent")
-    (setq mu4e-drafts-folder "/drafts")
-    (setq mu4e-trash-folder "/trash")
+  (require 'notmuch)
   #+end_src
 
-  Now can browse local email folders from emacs with =M-x mu4e=
+  (but also see =M-x customize-group RET notmuch RET=)
 
-  Sending email requires additional configuration in =~/.emacs=:
+  Now can browse email from emacs with =M-x notmuch=.
+
+** Outgoing Mail Setup
+
+  in =~/.emacs=:
 
   #+begin_src emacs-lisp
     (require 'smtpmail)
 
     (setq user-mail-address "replacewithuser@gmail.com"
-          user-full-name "Roland Conybeare")
+          user-full-name "Alice Exampleton")
 
     (setq message-send-mail-function 'smtpmail-send-it)
 
@@ -161,7 +312,7 @@
     (setq message-kill-buffer-on-exit t)
   #+end_src
 
-  We also need =~/.authinfo= to provide login credentials
+  For =smtpmail=, We also need =~/.authinfo= to provide login credentials
   #+begin_example
   machine smtp.gmail.com login replacewithuser@gmail.com port 587 password replacewithpassword
   #+end_example
@@ -171,3 +322,59 @@
   Obtain this from gmail.com -> account settings -> security -> 2-step verification -> app passwords
 
   Now can send email with =C-x m=
+
+* Lessons and Tradeoffs
+
+  1. for email syncing,  I looked at =offlineimap= and =isync=.   Chose =isync= because it's reported to be faster,
+     and I had a large (100k+) backlog of email to deal with.   This seems to have worked out well.
+     =isync= is designed to work with multiple email providers (what =isync= calls 'channels').
+
+  2. gmail eventually cuts off (or maybe times out) socket connections when trying to sync a large number of messages.
+     Settled on 15k message cap for the gmail channel
+
+     #+begin_example
+     # .mbsyncrc
+
+     Channel gmail
+     ...
+     MaxMessages 15000
+     ...
+     #+end_example
+
+  3. Scripting email-moving between =maildir= directories is non-trivial.
+     To do this correctly you need to update embedded email identifiers,
+     otherwise synchronization won't be able to tell the difference between copy and move.
+     Python has a builtin library (=mailbox=) that's simple to use,  and takes care of this.
+
+     It does come with a constraint:  as far as I can tell,  it expects email to be stored in the =maildir++= format,
+     rather than regular =maildir=.
+
+     In =maildir++=,  folder->filesystem structure is flattened.
+     A folder =foo/bar= will be stored in a directory =.foo.bar=,  so typically would have all folders in a single directory.
+
+     Multiple channels muddies the filesystem picture,  since different channels will map to sibling filesystem directories.
+
+     For example:
+
+     #+begin_example
+     ${MAILDIR}
+     +- gmail
+     |  +- .receipts
+     |  +- .travel
+     |  ..
+     +- hushmail
+        +- .policy
+        ..
+     #+end_example
+
+     I originally looked at =mu= for indexing (along with =mu4e= for email reading in emacs);
+     however that project doesn't seem to handle =maildir++= with multiple providers in separate directories like above.
+
+     Fortunately,  =notmuch= accomodates this,  since it just needs a path under =${MAILDIR}=.
+     For example: to look at emails in =gmail/.receipts=,  use =folder:gmail/.receipts= in a =notmuch= search.
+
+  4. Needed a detour to setup PGP (see [[file:gpg-setup.org]]),  to circumvent having plaintext passwords in configuration files.
+
+* Next
+
+  [[./cleanmbox.org][cleanmbox - script to automatically tidy offline email]]

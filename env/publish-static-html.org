@@ -80,57 +80,58 @@
      =~/.emacs= Configuration for such adopted sources (as of 1oct2023 just graphviz):
 
      #+begin_src elisp
-     ;; ----------------------------------------------------------------
-     ;; org-mode babel setup
-     ;; (execute dot/ditaa/bash/c++ etc. from .org code blocks)
-     ;;
-     ;; see
-     ;;   [[https://orgmode.org/worg/org-contrib/babel/intro.html]]
-     ;;   [[https://orgmode.org/worg/org-contrib/babel/languages/index.html]]
-     ;;
-     ;; code block:
-     ;;   #+begin_src ${language} ${switches} ${headerarguments}
-     ;;     ${body}
-     ;;   #+end_src
-     ;;
-     ;; use header argument
-     ;;   :results output
-     ;; to insert code-block output (i.e. contents of stdout) into .org file below code block
-     ;;
-     ;; use
-     ;;   :results value
-     ;; to just take value of last statement
-     ;;
-     ;; use
-     ;;   :session
-     ;; to share language sub-process across code-blocks.
-     ;;
-     ;; can use
-     ;;   #+name: foo
-     ;; to name an org-mode table;  then:
-     ;;   #+begin_src ... :var myfreevar=foo
-     ;;     ...
-     ;;   #+end_src
-     ;; with body mentioning myfreevar;  .org will substitute foo
-     ;;
-     ;; can do inline coode block with
-     ;;   src_<${lang}>{${code}} or src_<${lang}[${args}]{${code}}
-     ;; e.g.
-     ;;   src_python[:session]{10*x}
-     ;;
-     ;; notes:
-     ;;   [C-c C-v] org-babel prefix
-     ;;   [C-c C-v b] -- evaluate code blocks in buffer
-     ;;   [C-c C-v s] -- evaluate code blocks in subtree
-     ;;   [C-c C-v e] -- evaluate code block at point
-     ;;   [C-c '] M-x org-edit-src-code -- puts code block in new buffer with appropriate mode activated
-     ;;   [C-c M-b p] M-x org-babel-expand-src-block -- show expanded code block prior to evaluation
-     ;;   (org-babel-lob-ingest "path/to/file.org") to share code blogs as 'library'
+            ;; ----------------------------------------------------------------
+            ;; org-mode babel setup
+            ;; (execute dot/ditaa/bash/c++ etc. from .org code blocks)
+            ;;
+            ;; see
+            ;;   [[https://orgmode.org/worg/org-contrib/babel/intro.html]]
+            ;;   [[https://orgmode.org/worg/org-contrib/babel/languages/index.html]]
+            ;;
+            ;; code block:
+            ;;   #+begin_src ${language} ${switches} ${headerarguments}
+            ;;     ${body}
+            ;;   #+end_src
+            ;;
+            ;; use header argument
+            ;;   :results output
+            ;; to insert code-block output (i.e. contents of stdout) into .org file below code block
+            ;;
+            ;; use
+            ;;   :results value
+            ;; to just take value of last statement
+            ;;
+            ;; use
+            ;;   :session
+            ;; to share language sub-process across code-blocks.
+            ;;
+            ;; can use
+            ;;   #+name: foo
+            ;; to name an org-mode table;  then:
+            ;;   #+begin_src ... :var myfreevar=foo
+            ;;     ...
+            ;;   #+end_src
+            ;; with body mentioning myfreevar;  .org will substitute foo
+            ;;
+            ;; can do inline coode block with
+            ;;   src_<${lang}>{${code}} or src_<${lang}[${args}]{${code}}
+            ;; e.g.
+            ;;   src_python[:session]{10*x}
+            ;;
+            ;; notes:
+            ;;   [C-c C-v] org-babel prefix
+            ;;   [C-c C-v b] -- evaluate code blocks in buffer
+            ;;   [C-c C-v s] -- evaluate code blocks in subtree
+            ;;   [C-c C-v e] -- evaluate code block at point
+            ;;   [C-c '] M-x org-edit-src-code -- puts code block in new buffer with appropriate mode activated
+            ;;   [C-c M-b p] M-x org-babel-expand-src-block -- show expanded code block prior to evaluation
+            ;;   (org-babel-lob-ingest "path/to/file.org") to share code blogs as 'library'
 
-     (org-babel-do-load-languages
-      'org-babel-load-languages
-      '((dot . t)  ; graphviz [[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html]] see also graphviz-dot-mode
-        ))
+            (org-babel-do-load-languages
+             'org-babel-load-languages
+             '((ditaa . t) ; ditaa
+               (dot . t)  ; graphviz [[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html]] see also graphviz-dot-mode
+               ))
      #+end_src
 
      Example ~.org~ content using graphviz:

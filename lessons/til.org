@@ -18,7 +18,7 @@
 #+setupfile: ../ext/fniessen/theme-readtheorg.setup
 # +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
-#+html_link_home: index.html
+#+html_link_home: ../index.html
 
 * wsl (windows services for linux)
 
@@ -59,10 +59,14 @@
 
 - library [[https://github.com/Rconybea/xo-kalmanfilter][xo-kalmanfilter]] depends on eigen
 - library [[https://github.com/Rconybea/xo-pykalmanfilter][xo-pykalmanfilter]] depends on =xo-kalmanfilter=
-- the project [[https://github.com/Rconybea/xo][xo]] incorporates both codebases (along with others) into single umbrella source tree.
+- the project [[https://github.com/Rconybea/xo][xo]] incorporates both codebases (along with others) into single umbrella source tree (using git submodules).
 - alternatively, can build+install libraries independently (in bottom-up dependency order),
-  using cmake =find_package()= support provided by each library build.
-  Labeling this a 'vanilla build', since it follows standard (cmake-centric) practice for installing independent libraries.
+
+We call this last a 'vanilla build',  since it follows standard practice for installing 3rd-party libraries.
+In a so-called vanilla build,  we use cmake's =find_package()= support to acquire each dependency.
+In a vanilla build,  When cmake builds a library,  it obtains its dependencies from their final install location.
+
+Contrast this with the submodule build:  here,  when cmake build a library,  it obtains its dependencies from the build tree
 
 *** Problem
 
@@ -74,7 +78,11 @@
 
 - vanilla build fails:
   when compiling xo-pykalmanfilter,  the header path for eigen is given as =-Ipath/to/eigen=
-  instead of =-Ipath/to/eigen/eigen3=.
+  instead of =-Ipath/to/eigen/eigen3=,  so now need this to compile instead:
+  #+begin_src c++
+    #include <eigen3/Eigen/Dense>
+  #+end_src
+
 
 *** Details
 
@@ -160,9 +168,11 @@
 
   which.. doesn't look wrong :)
 
+  Evidence points to an inconsistency in Eigen-provided cmake support, if not in cmake proper.
+
 *** Workaround
 
-  Sufficient to restate the eigen dependency in =xo-pykalmanfilter=:
+  It's sufficient to restate the eigen dependency in =xo-pykalmanfilter=:
 
   #+begin_src cmake
     # xo_pykalmanfilter/src/pykalmanfilter/CMakeLists.txt
@@ -335,3 +345,427 @@ applies to the /depended-on/ library (3rd argument),  not the /depending/ librar
     pybind11_add_module(pyreflect pyreflect.cpp)
     xo_pybind11_dependency(pyreflect reflect)
   #+end_src
+
+* lsp (language server process)
+
+** mysterious lsp complaints about iostream headers (22feb2024)
+
+*** Setup
+
+- working on bespoke streambuf implementation (cmake-examples/zstream/include/zstream/zstreambuf.hpp)
+
+*** Problem
+
+- getting mysterious errors from flymake + emacs,  e.g. message "<fstream> not found"
+
+*** Solution
+
+- Had discarded =cmake-examples/build= directory,  using =cmake-examples/.build= instead.
+  This was to prevent build tree showing up when running =tree= in the =cmake-examples= directory
+
+- Left =cmake-examples/compile_commands.json= as a broken symlink referring to old build directory
+
+- This causes =lsp= understanding of compiler invocation to deteriorate as project acquires new files
+
+- Fix by swinging symlink to =cmake-examples/.build/compile_commands.json=,  duh!
+
+* iostream
+
+** general api rant (25feb2024)
+
+*** =istream.read()= doesn't report the number of bytes/chars read.
+   Instead of:
+   #+begin_src c++
+     istream & istream::read (char_type * s, std::streamsize count);
+   #+end_src
+
+   I'd prefer signature
+   #+begin_src c++
+     istream & istream::read (char_type * s, std::streamsize count, std::streamsize * p_gcount);
+   #+end_src
+
+   Developers are expected to use.
+   #+begin_src c++
+     std::streamsize istream::gcount () const;
+   #+end_src
+
+   I think this is inferior,  since relies on state held by =istream=,
+   that will be discarded on next read operation.
+
+*** =istream.read(s, n)= expects always to read n chars.
+   It sets =failbit= if less than =n= chars read.
+
+   Apparent alternatives are unsatisfactory:
+
+   1. =istream & readsome(s, n)= isn't required to do any physical i/o;  instead reports what's available already in memory
+   2. =istream & get(s, n, delim)= only reads up to first occurence of =delim=.
+   3. =istream & get(s, n)= is just a convenience for =istream::get(s, n, '\n')=.
+   4. could try writing a loop using combination of =istream::sync()=, =istream::readsome()=,  but that won't work if istream is actually unbuffered.
+   5. =istream s; s.rdbuf()->sgetn(s, n)= bypasses =istream= code for sentry object etc,  and can't set istream's =eofbit=.
+
+   The following workaround is viable,  except that it will read one-byte-at-a-time if input alternates between bytes values ='\x0'= and ='\xff'=:
+
+   #+begin_src c++
+     template<typename istream>
+     std::streamsize
+     read_upto(istream & in, istream::char_type * s, std::streamsize n)
+     {
+         std::streamsize n_read = 0;
+
+         constexpr char c_bits = '\x0'; /*any char value will do here*/
+
+         char delim = c_bits;
+
+         for (; in.good() && !in.eof() && (n_read < n); delim = delim ^ '\xff') {
+             // each iteration alternates between {c_bits, ~c_bits} as delimiter,
+             // so guarantees at least one byte progress every two iterations
+
+             in.get(s, n, delim);
+
+             std::streamsize nr = in.gcount();
+             if (nr > 0) {
+                 n_read += nr;
+                 s += nr;
+             }
+         }
+
+         return n_read;
+     }
+   #+end_src
+
+   I'd prefer to support this behavior (without the performance-accident-waiting-to-happen) directly from =istream=.
+
+   Another strategy is to use =istream::peek()= to check for input and =istream::readsome()= to fetch it
+
+   #+begin_src c++
+     template<typename istream>
+     std::streamsize
+     read_upto(istream & in, istream::char_type * s, std::streamsize n)
+     {
+         std::streamsize n_read = 0;
+
+         while (in.good() && !in.eof() && (n_read < n))) {
+             in.peek();   /* ensure at least one byte available in streambuf */
+
+             std::streamsize nr = in.readsome(s + n_read, n - n_read);
+
+             n_read += nr;
+         }
+     }
+   #+end_src
+
+   This works if =streambuf= actually does buffering.   It may be very slow if =streambuf= is unbuffered.
+
+   =istream::sentry= looks interesting,   but doesn't do any reading (except to possibly skip whitespace).
+
+   gcc 12.2.0's implementation:
+
+   #+begin_src c++
+     template<typename _CharT, typename _Traits>
+     basic_istream<_CharT, _Traits>::sentry::
+     sentry(basic_istream<_CharT, _Traits>& __in, bool __noskip) : _M_ok(false)
+     {
+         ios_base::iostate __err = ios_base::goodbit;
+         if (__in.good())
+         {
+             __try
+             {
+                 if (__in.tie())
+                     __in.tie()->flush();
+                 if (!__noskip && bool(__in.flags() & ios_base::skipws))
+                 {
+                     const __int_type __eof = traits_type::eof();
+                     __streambuf_type* __sb = __in.rdbuf();
+                     __int_type __c = __sb->sgetc();
+
+                     const __ctype_type& __ct = __check_facet(__in._M_ctype);
+                     while (!traits_type::eq_int_type(__c, __eof)
+                            && __ct.is(ctype_base::space,
+                                       traits_type::to_char_type(__c)))
+                         __c = __sb->snextc();
+
+                     // _GLIBCXX_RESOLVE_LIB_DEFECTS
+                     // 195. Should basic_istream::sentry's constructor ever
+                     // set eofbit?
+                     if (traits_type::eq_int_type(__c, __eof))
+                         __err |= ios_base::eofbit;                // (A)
+                 }
+             }
+             __catch(__cxxabiv1::__forced_unwind&)
+             {
+                 __in._M_setstate(ios_base::badbit);
+                 __throw_exception_again;
+             }
+             __catch(...)
+             { __in._M_setstate(ios_base::badbit); }
+         }
+
+         if (__in.good() && __err == ios_base::goodbit)            // (B)
+             _M_ok = true;
+         else
+         {
+             __err |= ios_base::failbit;                           // (C)
+             __in.setstate(__err);
+         }
+     }
+   #+end_src
+
+   with
+   #+begin_src c++
+     template<typename _Facet>
+     inline const _Facet&
+     __check_facet(const _Facet* __f)
+     {
+         if (!__f)
+             __throw_bad_cast();
+         return *__f;
+     }
+   #+end_src
+
+   Note that if =__noskipws= is =false= and sentry encounters eof,
+   then the line marked (A) executes --> test (B) fails --> (C) executes,
+   flagging stream as in an 'unrecoverable error state'.
+   The line (A) appears to be mandatory (in spite of the inline comment).
+
+   From https://cppreference.com:
+
+   #+begin_quote
+     explicit sentry( std::basic_istream<CharT, Traits>& is, bool noskipws = false );
+
+     Prepares the stream for formatted input.
+
+     If is.good() is false, calls is.setstate(std::ios_base::failbit) and returns.
+     Otherwise, if is.tie() is not a null pointer, calls is.tie()->flush() to synchronize the output sequence with external streams.
+     This call can be suppressed if the put area of is.tie() is empty.
+     The implementation may defer the call to flush() until a call of is.rdbuf()->underflow() occurs.
+     If no such call occurs before the sentry object is destroyed, it may be eliminated entirely.
+
+     If noskipws is zero and is.flags() & std::ios_base::skipws is nonzero,
+     the function extracts and discards all whitespace characters until the next available character is not a whitespace character
+     (as determined by the currently imbued locale in is).
+     If is.rdbuf()->sbumpc() or is.rdbuf()->sgetc() returns traits::eof(),
+     the function calls setstate(std::ios_base::failbit | std::ios_base::eofbit)
+     (which may throw std::ios_base::failure).
+
+     Additional implementation-defined preparation may take place,
+     which may call setstate(std::ios_base::failbit) (which may throw std::ios_base::failure).
+
+     If after preparation is completed, is.good() == true, then any subsequent calls to operator bool will return true.
+   #+end_quote
+
+   However we can bypass this with =__noskip_= set to =true=:
+
+   #+begin_src c++
+     template<typename istream>
+     std::streamsize
+     read_upto(istream & in, istream::char_type * s, std::streamsize n)
+     {
+         istream::sentry sentry(in, true /*noskipws*/);
+
+         std::streamsize n_read = 0;
+
+         if (sentry) {
+             try {
+                 n_read = in.rdbuf()->sgetn(s, n);
+
+                 in.setstate(ios::eofbit);
+             } catch(__cxxabiv1::__forced_unwind &)  {
+                 in.setstate(ios::failbit);
+                 throw;
+             } catch(...) {
+                 in.setstate(ios::failbit);
+             }
+         }
+
+         return n_read;
+     }
+   #+end_src
+
+   Another alternative would be to post-process =read()=, and clear =failbit= if set along with =eofbit=:
+
+   #+begin_src c++
+     template<typename istream>
+     std::streamsize
+     read_upto(istream & in, istream::char_type * s, std::streamsize n)
+         {
+             in.read(s, n);
+
+             std::streamsize n_read = in.gcount();
+
+             if ((n_read < n) && in.eof() && in.fail()) {
+                 /* clear failbit */
+                 in.clear(in.rdstate() & ~std::ios::failbit);
+             }
+
+             return n_read;
+         }
+   #+end_src
+
+*** Iostream get isn't monotonic
+
+   =iostream.get(s, n, delim)= sets =failbit= if first character matches delim.
+
+   This interferes with using =iostream.get= as building block for a longer i/o sequence;
+
+   Tripped over this while writing =zstream.read_until= for my =cmake-examples= project:
+
+   Instead of:
+
+   #+begin_src c++
+     std::streamsize read_until(char_type * s,
+                                std::streamsize n,
+                                bool check_delim_flag,
+                                char_type delim)
+         {
+             ...
+
+             std::streamsize nr = 0;
+
+             this->get(s, n, delim);
+             nr = this->gcount();
+
+             ...
+
+             return nr;
+         }
+   #+end_src
+
+   We need carve-out:
+
+   #+begin_src c++
+     std::streamsize read_until(char_type * s,
+                                std::streamsize n,
+                                bool check_delim_flag,
+                                char_type delim)
+         {
+             ...
+
+             std::streamsize nr = 0;
+
+             int_type nextc = this->rdbuf_.sgetc();
+
+             if (nextc == Traits::to_int_type(delim)) {
+                 nr = 0;
+             } else {
+                 this->get(s, n, delim);
+
+                 nr = this->gcount();
+             }
+
+             ...
+
+             return nr;
+         }
+   #+end_src
+
+
+
+*** Iostream position reporting isn't monotonic.
+
+   =iostream.tellg()= and =iostream.putg()= report current position w.r.t.
+   beginning of stream for input (get) and output (put) respectively.
+
+   Unfortunately,  they are not monotonic,  and code like this is subtly broken:
+
+   #+begin_src c++
+     istream & input = ...; // some binary stream
+     struct foo part1;
+     struct foo part2;
+
+     istream::pos_type p0 = input.tellg();
+
+     input >> part1 >> part2;
+
+     istream::pos_type p1 = input.tellg();
+
+     istream::pos_type n_read = p1 - p0;
+   #+end_src
+
+   If stream reaches end-of-file at the end of =part2=,  then in fact reading was successful,
+   but =p1= will be =-1=,  and =n_read= will be nonsense.
+
+   Presumably this is why =iostream.gcount()= exists:  otherwise there'd be no way to
+   determine how many bytes/chars a preceding read obtained.
+
+   A correct (but awkward and error-prone) implementation:
+
+   #+begin_src c++
+     istream & input = ...;
+     struct foo part1;
+     struct foo part2;
+
+     std::streamsize n_read = 0;
+
+     input >> part1;
+     n_read += input.gcount();
+
+     input >> part2;
+     n_read += input.gcount();
+   #+end_src
+
+*** Streambuf not responsible for eofbit.
+
+   =istream.eofbit= probably belongs in =streambuf=.
+   =streambuf= has to recognize end-of-file anyway,  since it's responsible for physical I/O.
+   It might as well record and report it.
+
+*** Stream position reporting from streambuf
+
+   It would be simpler for =streambuf= to support =istream::tellg()= and =istream::tellp()= directly instead of relying on =streambuf::seekoff()=.
+   Argument here is that even for a non-seekable stream buffer,  it still makes sense to support =tellg()= and =tellp()=.
+   This requires streambuf author to implement at least a restricted version of =streambuf::seekoff()=,
+   which muddies the waters.
+
+* zlib
+
+** zstreambuf errors after move assignment
+
+*** Setup
+
+- Making =zstreambuf.open()= work with a =zstreambuf= that's already been used for i/o.
+- Attempted to cleanup state within =zstreambuf.close()=,  using move assignment on
+  =buffered_inflate_zstream= and =buffered_deflate_zstream=.
+
+*** Problem + Diagnosis
+
+- Unit testing revealed that uncompress failed after second =zstreambuf.open()=.
+
+- It turns out that although zlib's =z_stream= struct is fully exposed
+  (to work with zlib, application code should declare a variable with type =z_stream=),
+  the =z_stream= struct can't be moved to another location.
+  Presumably at least one of (=::deflateInit2()=, =::inflateInit2()=) does some
+  address-dependent computation involving one or more =z_stream= members.
+
+*** Solution
+
+- Replace =z_stream= member with a pointer:
+
+  Instead of:
+
+  #+begin_src C++
+    // compression/include/compression/base_zstream.hpp
+
+    #include <zlib.h>
+
+    struct base_zstream {
+        // ...omitted...
+
+        z_stream zstream_;
+    };
+  #+end_src
+
+  write:
+
+  #+begin_src C++
+    // compression/include/compression/base_zstream.hpp
+
+    #include <utility>
+
+    struct base_zstream {
+        // ...omitted...
+
+        std::unique_ptr<z_stream> p_native_zs_;
+    };
+  #+end_src
+
+  Then implement =::swap()= etc by swapping pointers.

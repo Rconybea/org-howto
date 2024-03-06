@@ -1,0 +1,393 @@
+#+title: building your own project with nix
+#+author: Roland Conybeare
+#
+# org-publish options
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{} toc:4
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
+#+language: en
+# #+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# #+html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#+html_link_home: /web/index.html
+#+html_link_up: /web/index.html
+
+* Motivation
+
+  I've found plenty of getting-started guides for working with nix.
+  Most take the perpective of "a better apt-get":  they cover how to use nix
+  to assemble/modify external software packages.
+
+* Lessons
+
+  Some of these are hard-won discoveries!
+
+** Keep .nix files and project source in separate repos
+
+   On the face of it,  it seems attractive and natural to keep nix files for a project
+   in the same repo!   That's what we do with build instructions (=CMakeLists.txt= etc)
+
+*** Reasons
+
+   1. =.nix= files (=default.nix=, =shell.nix= etc) likely need to contain revision hashes.
+      Want to avoid situation where you've modified =default.nix=,  and need it to record
+      a hash that wil be determined...  /after/ you've committed the file to git
+
+   2. You might want to incorporate a repo *child* into another repo *parent* as a submodule.
+      The =.nix= files associated with *child* probably don't do what you want in that context.
+
+   3. Even stronger reason to avoid this: nix flakes.   Flakes will break
+      (at least as of Dec 2023) if a directory that contains a =flake.lock= file contains
+      another directory with a =flake.lock= file.  The flake system can't exit from a state
+      in which directory tree is dirty.   This nixes composing project trees that contain flakes.
+
+   4. The =nixpkgs= authors have reached the same conclusion.  In =nixpkgs=,  instructions
+      for building a package are expressed as a function, to be invoked
+      from =callPackage=.  The =nix-pkgs= provides for features like parameterization and
+      cross-compilation;  tradeoff is that they then don't work directly from 'nix-build'
+
+*** Instead
+
+   For a project =foo=, create a =foo-nix= repo that uses =fetchurl= or cousins to
+   fetch and build =foo=.
+
+** Setup your build the nixpkgs way
+
+   In other words,  use =callPackage=!
+
+*** Reasons
+
+    1. =callPackage= supports cross-compilation out of the box.
+
+    2. =callPackage= supports overrides.
+
+    4. If you already have nix build setup for nixpkgs,  then there's nothing new
+       to do if you want to upload into nixpkgs (or incorporate into your fork thereof) later
+
+** Don't put build instructions in flakes
+
+   Do use flakes!   They're great for version pinning and specifying configurations
+
+   However,  if you put build instructions in flakes (i.e. call outside =callPackage=),  then
+   you lose the ability to easily compose and adapt that the =nixpkgs= tools give you.
+
+   For packaging our own software we will use flake to do these things (and nothing else):
+   1. pin nixpkgs.
+   2. fetch repos for local projects (things we aren't getting from nixpkgs)
+   3. specifying dependendency sets for local projects.
+
+   In particular we exclude from flake:
+   1. =stdenv.mkDerivation= calls
+   2. specifying =buildInputs= or cousins
+
+
+* Example Flake Setup
+
+  Here's an example, following advice above
+  This example condensed from cmake-examples-nix.
+  We have a local project =cmake-examples=,  with a bunch of =nixpkgs= dependencies.
+
+  We'll setup a nix build in =cmake-examples-nix=.
+  Will need just two files:
+  - =flake.nix=,      a nix flake
+  - =pkgs/ex23.nix=,  build instructions as in =nixpgks=.
+
+** File =cmake-examples-nix/pkgs/ex23.nix=:
+  #+begin_src nix
+    {
+      # dependencies
+      stdenv, doxygen, cmake, catch2, pkg-config, python3Packages, boost, zlib, # ... other deps here
+
+      # args
+      #   someconfigurationoption ? false
+      pybind11 ? python3Packages.pybind11,
+      sphinx ? python3Packages.sphinx,
+      breathe ? python3Packages.breathe,
+    } :
+
+    stdenv.mkDerivation (finalattrs:
+      {
+        name = "cmake-examples-ex23";
+
+        # note: ../flake.nix will override this
+        src = fetchGit {
+          url = "https://github.com/rconybea/cmake-examples";
+          ref = "ex23";     # branch
+          # rev = "12345";  # hash
+          sha256 = "";      # must supply if not overridden from parent
+        };
+
+        # run unit tests
+        doCheck = true;
+
+        buildInputs = [ cmake pkg-config  pybind11 sphinx doxygen breathe catch2 boost zlib ];
+
+        buildPhase = ''
+          make
+          make doxygen
+        '';
+      })
+
+  #+end_src
+
+** File =cmake-examples-nix/flake.nix=:
+  #+begin_src nix
+    {
+      description = "Flake for cmake-examples project";
+
+      # pinning nixpkgs
+      inputs.nixpkgs.url = "https://github.com/NixOS/nixpkgs/archive/4dd376f7943c64b522224a548d9cab5627b4d9d6.tar.gz";
+      # inputs.nixpkgs.url = "github:nixos/nixpkgs/23.11";  # to use particular stable version
+
+      inputs.flake-utils.url = "github:numtide/flake-utils";
+
+      # branch 'ex23' from cmake-examples
+      inputs.cmake-examples-ex23-path = { type = "github"; owner = "Rconybea"; repo = "cmake-examples"; flake = false; ref = "ex23"; };
+
+      outputs = { self,
+                  nixpkgs,
+                  flake-utils,
+                  cmake-examples-ex23-path
+                } :
+                  let
+                    out = system :
+                      let
+                        pkgs = nixpkgs.legacyPackages.${system};
+                        appliedOverlay = self.overlays.default pkgs pkgs;
+                      in
+                        {
+                          # 1 line for each of our own packages
+                          packages.cmake-examples-ex23 = appliedOverlay.cmake-examples-ex23;
+                        };
+                  in
+                    flake-utils.lib.eachDefaultSystem out // {
+                      overlays.default = final: prev: (
+                        let
+                          # configuration choices
+                          boost = prev.boost182;                     # boost 1.82
+                          python3Packages = prev.python311Packages;  # python 3.11
+
+                          # configuration choices we're making here
+                          extras = { boost = boost; python3Packages = python3Packages; };
+                        in
+                          {
+                            cmake-examples-23 =
+                              (prev.callPackage ./pkgs/ex23.nix { boost = boost;
+                                                                  python3Packages = python3Packages; })
+                                .overrideAttrs(old: { src = cmake-examples-ex23-path; });
+                          });
+                    };
+      }
+  #+end_src
+
+** Explanation
+
+  Diving into some of the contents of these two =.nix= files:
+
+*** List derivations to build
+  In =flake.nix= we have:
+  #+begin_src nix
+    let
+      pkgs = nixpkgs.legacyPackages.${system};
+      appliedOverlay = self.overlays.default pkgs pkgs;
+    in
+      {
+        # 1 line for each of our own packages
+        packages.cmake-examples-ex23 = appliedOverlay.cmake-examples-ex23;
+      };
+  #+end_src
+
+  Here =packages.cmake-examples-ex23= represents a derivation to be built by this flake.
+
+*** Build for host architecture
+  #+begin_src nix
+    flake-utils.lib.eachDefaultSystem out // ...
+  #+end_src
+  establishes builds compatible with host architecture (not cross-compiling).
+  =out= is target architecture.   The =//= substitutes attributes from its RHS,
+  discussed below:
+
+*** Overlay to choose configuration
+  #+begin-src
+  overlays.default = final: prev: (....);
+  #+end_src
+  specifies an overlay,  in "lazy-converging-to-a-fixpoint style" (which is apparently a thing).
+
+  When nix invokes =overlays.default=:
+  - =prev= refers to a guess (at entire altered-nixpkgs-expression?)
+     from prior iteration.
+  - =final= refers to current iteration.
+  After first iteration, when =prev= and =final= are the same,  nix:
+  - recognizes that it has reached a fixpoint,
+  - declares victory
+  - uses the derivations from either of the converged arguments (since they're the same).
+
+  The iteration is initiated by nixpkgs for selected architecture twice (as =prev= and =final=):
+  #+begin_src nix
+    pkgs = nixpkgs.legacyPackages.${system}
+    appliedOverlay = self.overlays.default pkgs pkgs;
+  #+end_src
+
+  We make configuration choices here:
+  #+begin_src nix
+    boost = prev.boost182;
+    python3Packages = prev.python311Packages;
+  #+end_src
+
+  If the LHS names matches something in =nixpkgs=,  then that line can be omitted to adopt
+  whatever default =nixpkgs= offers.
+
+  For example:
+  #+begin_example
+  $ nix-env -qaP | grep nixpkgs.boost
+  nixpkgs.boost175    boost-1.75.0
+  nixpkgs.boost177    boost-1.77.0
+  nixpkgs.boost178    boost-1.78.0
+  nixpkgs.boost       boost-1.79.0
+  nixpkgs.boost180    boost-1.80.0
+  nixpkgs.boost181    boost-1.81.0
+  nixpkgs.boost182    boost-1.82.0
+  #+end_example
+
+  So our example configuration chooses =boost-1.82.0= instead of nixpkgs default =boost-1.79.0=
+
+*** Delegate build instructions and respect flake-mediated pinning
+
+  We finally introduce a derivation for our own package (=cmake-examples-23=) here:
+  #+begin_src nix
+      cmake-examples-23 =
+        (prev.callPackage ./pkgs/ex23.nix { boost = boost;
+                                            python3Packages = python3Packages; })
+          .overrideAttrs(old: { src = cmake-examples-ex23-path; });
+  #+end_src
+
+  Here
+  #+begin_src nix
+      { boost = boost;
+        python3Packages = python3Packages; }
+  #+end_src
+  introduces our overrides (we're using =flake.nix= for the approved purpose of making configuration choices)
+  to arguments of the top-level function in =./pkgs/ex23.nix=
+
+  Meanwhile
+  #+begin_src nix
+      .overrideAttrs(old: { src = cmake-examples-ex23-path; })
+  #+end_src
+  tells nix to override the =src= attribute in =./pkgs/ex23.nix='s argument to =stdenv.mkDerivation=
+
+  In other words,  it substitutes for:
+  #+begin_src nix
+        src = fetchGit {
+          url = "https://github.com/rconybea/cmake-examples";
+          ref = "ex23";     # branch
+          # rev = "12345";  # hash
+          sha256 = "";      # must supply if not overridden from parent
+        };
+  #+end_src
+
+** Use
+
+   Use result just like a regular flake
+
+   Verify flake:
+   #+begin_example
+   $ cd cmake-examples-nix
+   $ nix flake check
+   #+end_example
+
+   Example =flake.lock=:
+   #+begin_example
+     {
+       "nodes": {
+         "cmake-examples-ex23-path": {
+           "flake": false,
+           "locked": {
+             "lastModified": 1709699013,
+             "narHash": "sha256-Polpd2+DiZF615sih6HLOtzj0LaaFkQxrN6Jobdnq7M=",
+             "owner": "Rconybea",
+             "repo": "cmake-examples",
+             "rev": "6d14f4146f2c7fc2011dd6790947ea261575304e",
+             "type": "github"
+           },
+           "original": {
+             "owner": "Rconybea",
+             "ref": "ex23",
+             "repo": "cmake-examples",
+             "type": "github"
+           }
+         },
+         "nixpkgs": {
+           "locked": {
+             "narHash": "sha256-mBXQ65IrCJbNgTrj0+6xdXpD9/U31AWPKdwGlOufhtI=",
+             "type": "tarball",
+             "url": "https://github.com/NixOS/nixpkgs/archive/4dd376f7943c64b522224a548d9cab5627b4d9d6.tar.gz"
+           },
+           "original": {
+             "type": "tarball",
+             "url": "https://github.com/NixOS/nixpkgs/archive/4dd376f7943c64b522224a548d9cab5627b4d9d6.tar.gz"
+           }
+         },
+         ...
+       },
+       "root": "root",
+       "version": 7
+     }
+   #+end_example
+
+   Build (from pinned revisions)
+   #+begin_example
+   $ nix build -L --print-build-logs .#cmake-examples-ex23
+   #+end_example
+
+   Result
+   #+begin_example
+   $ tree ./result
+   result
+   ├── 3.11
+   │   ├── pyzstream.cpython-311-x86_64-linux-gnu.so
+   │   └── zstream.py
+   ├── bin
+   │   ├── hello
+   │   └── myzip
+   ├── include
+   │   ├── compression
+   │   │   ├── base_zstream.hpp
+   │   │   ├── buffer.hpp
+   │   │   ├── buffered_deflate_zstream.hpp
+   │   │   ├── buffered_inflate_zstream.hpp
+   │   │   ├── compression.hpp
+   │   │   ├── deflate_zstream.hpp
+   │   │   ├── hex.hpp
+   │   │   ├── inflate_zstream.hpp
+   │   │   ├── span.hpp
+   │   │   └── tostr.hpp
+   │   └── zstream
+   │       ├── xfilebuf.hpp
+   │       ├── zstream.hpp
+   │       └── zstreambuf.hpp
+   ├── lib
+   │   ├── libcompression.so -> libcompression.so.2.3
+   │   ├── libcompression.so.2
+   │   └── libcompression.so.2.3 -> libcompression.so.2
+   └── share
+       └── doc
+           └── cmake-examples
+               └── html
+                    ...
+   #+end_example
+
+** Links
+
+   Resources
+
+   - [[https://jade.fyi/blog/#flakes-arent-real]] motivation for this article
+   - [[https://github.com/vlktomas/nix-examples]]
+   - [[https://ryantm.github.io/nixpkgs/stdenv/stdenv]]
+   - [[https://nixos.org/guides/nix-pills/]] Nix pills (nix tutorial, from the ground up)
+   - https://github.com/Rconybea/cmake-examples progressive series of cmake examples,  using as example of a local project
+   - [[https://github.com/Rconybea/cmake-examples-nix]] nix build for cmake-examples

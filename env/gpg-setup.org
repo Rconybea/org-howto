@@ -12,12 +12,24 @@
 #+language: en
 # +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # +html_head: <link rel="stylesheet" type="text/css" href="/web/css/notebook.css" />
+#+keywords: gpg2
 #+html_link_home: /web/index.html
+#+html_link_up: /web/index.html
 
 * Introduction
 
   Setting up GPG to avoid needing plaintext passwords in certain configuration files.
   Originally introduced this when configuring =mbsync= for email setup.
+
+* Links
+
+  https://rzetterberg.github.io/yubikey-gpg-nixos.html GPG+nixos setup with a Yubikey
+
+* Install GPG via Nix
+
+  #+begin_example
+    $ nix-env -i gnupg
+  #+end_example
 
 * Generate Keypair
 
@@ -25,7 +37,7 @@
 
   #+begin_example
     $ gpg --gen-key
-    Real username: Roland Conybeare
+    Real username: Alice Exampleton
     Email address: replacewithsomething@somewhere.com
   #+end_example
 
@@ -39,7 +51,7 @@
     -------------------------------
     pub   rsa3072 2024-01-11 [SC] [expires: 2026-01-10]
           158495DF3E604E65D12B85D4F1C0105549B5F0D1
-    uid           [ultimate] Roland Conybeare <replacewithsomething@somewhere.com>
+    uid           [ultimate] Alice Exampleton <replacewithsomething@somewhere.com>
     sub   rsa3072 2024-01-11 [E] [expires: 2026-01-10]
   #+end_example
 

@@ -15,6 +15,8 @@
 # options used exclusively by the html exporter
 #+setupfile: ext/fniessen/theme-readtheorg.setup
 #+language: en
+#
+# not using: prefer theme-readtheorg
 # +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
 # +html_link_home: index.html
@@ -32,10 +34,10 @@
   #+end_example
 
 * Contents
-  - [[file:lessons/til.org][TIL]] lessons learned
+  - [[file:lessons/til.org][TIL]] lessons learned - problems & fixes
 
   - [[file:env/development-environment.org][c++ development environment]] emacs/lsp/c++/cmake/nix/github/docker
-    - [[file:env/emacs-setup.org][.emacs walkthrough]]
+    - [[file:env/emacs-setup.org][.emacs walkthrough]] terse!
     - [[file:env/org-mode-resources.org][org-mode resources]]
     - [[file:env/publish-static-html.org][publish static html]] org-mode -> github pages
     - [[file:env/github-continuous-integration][continuous integration]] with github + nix + docker
@@ -44,6 +46,10 @@
     - [[file:env/windows11-setup.org][windows11 setup]] wsl2 life hacks
     - file:env/gpg-setup.org GPG setup
     - file:env/email-setup.org email setup
+    - [[file:env/cleanmbox.org]] automatically tidy email messages
+
+  - nix howto
+    - [[file:nix/nix-for-your-own-project.org][nix cookbook]] build your own project with nix
 
   - [[file:orgpub/org-examples.org][org-examples]] cookbook for org-mode publishing
   - file:d3/d3-examples.org d3 (javascript graphics library) examples
