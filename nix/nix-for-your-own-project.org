@@ -64,9 +64,9 @@
 
    In other words,  use =callPackage=!
 
-    1. =callPackage= supports cross-compilation out of the box.
+    1. =callPackage= supports cross-compilation (out of the box)
 
-    2. =callPackage= supports overrides.
+    2. =callPackage= supports parameterization (i.e. overrides)
 
     3. If you already have nix build setup for nixpkgs,  then there's nothing new
        to do if you want to upload into nixpkgs (or incorporate into your fork thereof) later
