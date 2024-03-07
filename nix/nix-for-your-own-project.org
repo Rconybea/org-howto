@@ -20,19 +20,23 @@
 * Motivation
 
   I've found plenty of getting-started guides for working with nix.
-  Most take the perpective of "a better apt-get":  they cover how to use nix
+  Most take the perpective of "a reproducible apt-get":  they cover how to use nix
   to assemble/modify external software packages.
 
-* Lessons
+  Less common is instruction on how best to package local (non-nixpkgs) software,
+  in particular if you have multiple packages with non-trivial interdependencies.
 
-  Some of these are hard-won discoveries!
+  The sequel summarizes my current understanding of how best to make this work
+  (thanks to Jade Lovelace's article on flakes and nixpkgs, link below)
+
+* Lessons
 
 ** Keep .nix files and project source in separate repos
 
    On the face of it,  it seems attractive and natural to keep nix files for a project
    in the same repo!   That's what we do with build instructions (=CMakeLists.txt= etc)
 
-*** Reasons
+*** Why not
 
    1. =.nix= files (=default.nix=, =shell.nix= etc) likely need to contain revision hashes.
       Want to avoid situation where you've modified =default.nix=,  and need it to record
@@ -51,7 +55,7 @@
       from =callPackage=.  The =nix-pkgs= provides for features like parameterization and
       cross-compilation;  tradeoff is that they then don't work directly from 'nix-build'
 
-*** Instead
+*** Do this instead
 
    For a project =foo=, create a =foo-nix= repo that uses =fetchurl= or cousins to
    fetch and build =foo=.
@@ -60,13 +64,11 @@
 
    In other words,  use =callPackage=!
 
-*** Reasons
-
     1. =callPackage= supports cross-compilation out of the box.
 
     2. =callPackage= supports overrides.
 
-    4. If you already have nix build setup for nixpkgs,  then there's nothing new
+    3. If you already have nix build setup for nixpkgs,  then there's nothing new
        to do if you want to upload into nixpkgs (or incorporate into your fork thereof) later
 
 ** Don't put build instructions in flakes
@@ -385,9 +387,10 @@
 
    Resources
 
-   - [[https://jade.fyi/blog/#flakes-arent-real]] motivation for this article
-   - [[https://github.com/vlktomas/nix-examples]]
-   - [[https://ryantm.github.io/nixpkgs/stdenv/stdenv]]
+   - [[https://jade.fyi/blog/#flakes-arent-real/]] wonderful Jade Lovelace blog -- inspiration for this article!
+   - [[https://github.com/vlktomas/nix-examples]] Tomas Vlk nix examples
    - [[https://nixos.org/guides/nix-pills/]] Nix pills (nix tutorial, from the ground up)
-   - https://github.com/Rconybea/cmake-examples progressive series of cmake examples,  using as example of a local project
+   - https://ianthehenry.com/posts/how-to-learn-nix/ Ian Henry's "nix travel diary"
+   - [[https://ryantm.github.io/nixpkgs/stdenv/stdenv]] Nix standard environment docs
+   - https://github.com/Rconybea/cmake-examples my progressive series of cmake examples,  using as example of a local project
    - [[https://github.com/Rconybea/cmake-examples-nix]] nix build for cmake-examples
