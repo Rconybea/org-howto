@@ -27,45 +27,45 @@
 
 * Python Libraries
 
-  [[https://github.com/xo-pywebsock][xo-pywebsock]] in-memory http server; can expose entirely-native publishing pipeline via websockets.
-  [[https://github.com/rconybea/xo-pywebutil][xo-pywebutil]] lo-level abstractions for http: endpoints, attribute lists.
-  [[https://github.com/pykalmanfilter][xo-pykalmanfilter]] linear kalman filter with simulation support.
-  [[https://github.com/rconybea/xo-pydistribution][xo-pydistribution]] probability distributions e.g. Kolmogorov Smirnov
-  [[https://github.com/rconybea/xo-pyprocess][xo-pyprocess]] stochastic processes with simulation focus.
-  [[https://github.com/rconybea/xo-pyreactor][xo-pyreactor]] complex event processors + polling reactor.
-  [[https://github.com/rconybea/xo-pyprintjson][xo-pyprintjson]] plugin json printing for xo c++ classes.
-  [[https://github.com/rconybea/xo-pyreflect][xo-pyreflect]] plugin introspection for xo c++ classes.
+  - [[https://github.com/rconybea/xo-pywebsock][xo-pywebsock]] in-memory http server; can expose entirely-native publishing pipeline via websockets.
+  - [[https://github.com/rconybea/xo-pywebutil][xo-pywebutil]] lo-level abstractions for http: endpoints, attribute lists.
+  - [[https://github.com/rconybea/xo-pykalmanfilter][xo-pykalmanfilter]] linear kalman filter with simulation support.
+  - [[https://github.com/rconybea/xo-pydistribution][xo-pydistribution]] probability distributions e.g. Kolmogorov Smirnov
+  - [[https://github.com/rconybea/xo-pyprocess][xo-pyprocess]] stochastic processes with simulation focus.
+  - [[https://github.com/rconybea/xo-pyreactor][xo-pyreactor]] complex event processors + polling reactor.
+  - [[https://github.com/rconybea/xo-pyprintjson][xo-pyprintjson]] plugin json printing for xo c++ classes.
+  - [[https://github.com/rconybea/xo-pyreflect][xo-pyreflect]] plugin introspection for xo c++ classes.
 
 * C++ Libraries
 
   http
-  [[https://github.com/rconybea/xo-websock][xo-websock]] in-memory http server with websocket and python support.
-  [[https://github.com/xo-webutil][xo-webutil]] low-level abstractions for http: endpoints, attribute lists.
+  - [[https://github.com/rconybea/xo-websock][xo-websock]] in-memory http server with websocket and python support.
+  - [[https://github.com/rconybea/xo-webutil][xo-webutil]] low-level abstractions for http: endpoints, attribute lists.
 
   stochastic processes + friends
-  [[https://github.com/rconybea/xo-kalmanfilter][xo-kalmanfilter]] linear kalman filter with simulation support.
-  [[https://github.com/rconybea/xo-process][xo-process]] stochastic processes and simulation-compatible realizations.
-  [[https://github.com/rconybea/xo-distribution][xo-distribution]] probability distributions including Kolmogorov-Smirnov
-  [[https://github.com/rconybea/xo-statistics][xo-statistics]] header-only. online accumulators, histogram.
-  [[https://github.com/rconybea/xo-randomgen][xo-randomgen]] header-only. fast pseudo random number generators. xoshiro**,
+  - [[https://github.com/rconybea/xo-kalmanfilter][xo-kalmanfilter]] linear kalman filter with simulation support.
+  - [[https://github.com/rconybea/xo-process][xo-process]] stochastic processes and simulation-compatible realizations.
+  - [[https://github.com/rconybea/xo-distribution][xo-distribution]] probability distributions including Kolmogorov-Smirnov
+  - [[https://github.com/rconybea/xo-statistics][xo-statistics]] header-only. online accumulators, histogram.
+  - [[https://github.com/rconybea/randomgen][xo-randomgen]] header-only. fast pseudo random number generators. xoshiro**,
 
   complex event processing
-  [[https://github.com/xo-simulator][xo-simulator]] deterministic event-based simulation
-  [[https://github.com/rconybea/xo-reactor][xo-reactor]] api for complex event processors + simple polling implementation.
+  - [[https://github.com/rconybea/xo-simulator][xo-simulator]] deterministic event-based simulation
+  - [[https://github.com/rconybea/xo-reactor][xo-reactor]] api for complex event processors + simple polling implementation.
 
   data structures
-  [[https://github.com/xo-ordinaltree][xo-ordinaltree]] header-only. fast in-memory B+ tree, red-black tree w/ ordinal statistics.
+  - [[https://github.com/rconybea/xo-ordinaltree][xo-ordinaltree]] header-only. fast in-memory B+ tree, red-black tree w/ ordinal statistics.
 
   general-purpose
-  [[https://github.com/rconybea/xo-callback][xo-callback]] header-only. reentrant callback set
-  [[https://github.com/rconybea/xo-printjson][xo-printjson]] json printer with plugin support.
-  [[https://github.com/rconybea/reflect][xo-reflect]] reflection/introspection library
-  [[https://github.com/rconybea/xo-subsys][xo-subsys]] orderly startup and shutdown for subsystems with plugin features
-  [[https://github.com/rconybea/xo-refcnt][xo-refcnt]] intrusive reference counting
-  [[https://github.com/rconybea/xo-indentlog][xo-indentlog]] header-only logging library; colorized output with indentation tracking program call structure
+  - [[https://github.com/rconybea/xo-callback][xo-callback]] header-only. reentrant callback set
+  - [[https://github.com/rconybea/xo-printjson][xo-printjson]] json printer with plugin support.
+  - [[https://github.com/rconybea/reflect][xo-reflect]] reflection/introspection library
+  - [[https://github.com/rconybea/subsys][xo-subsys]] orderly startup and shutdown for subsystems with plugin features
+  - [[https://github.com/rconybea/refcnt][xo-refcnt]] intrusive reference counting
+  - [[https://github.com/rconybea/indentlog][xo-indentlog]] header-only logging library; colorized output with indentation tracking program call structure
 
   build tools
-  [[https://github.com/rconybea/xo-cmake][xo-cmake]] cmake modules.
+  - [[https://github.com/rconybea/xo-cmake][xo-cmake]] cmake modules.
 
 * External Dependencies
 

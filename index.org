@@ -32,12 +32,12 @@
   - [[file:lessons/til.org][TIL]] lessons learned - problems & fixes
 
   - software projects
-    - xo; independent c++/python libraries for event-based simulation; cmake/c++/pybind11/websockets
-      - file:sw/xo.org xo libraries intro
+    - xo: c++/python libraries for event-based simulation; cmake/c++/pybind11/websockets
+      - [[file:sw/xo.org][xo libraries intro]]
       - [[https://github.com/Rconybea/xo][xo]] umbrella repo for all xo libraries (using git submodules)
       - [[https://github.com/rconybea/xo-nix2][xo-nix2]] xo nix build using flakes (TODO: update per nix cookbook below)
       - [[https://github.com/rconybea/xo-nix3][xo-nix3]] git CI build; using nix-built custom docker container
-      - [[https://github.com:rconybea/docker-xo-builder][docker-xo-builder]] custom docker container with all xo build deps
+      - [[https://github.com/Rconybea/docker-xo-builder][docker-xo-builder]] custom docker container with all xo build deps
 
   - cmake-examples progressive walkthrough; cmake/c++/boost/gcov/pybind11/doxygen/sphinx; +nix
     - [[https://github.com/rconybea/cmake-examples][cmake-examples]] primary repo
@@ -47,7 +47,7 @@
     - [[file:env/emacs-setup.org][.emacs walkthrough]] terse!
     - [[file:env/org-mode-resources.org][org-mode resources]]
     - [[file:env/publish-static-html.org][publish static html]] org-mode -> github pages
-    - [[file:env/github-continuous-integration][continuous integration]] with github + nix + docker
+    - [[file:env/github-continuous-integration.org][continuous integration]] with github + nix + docker
     - [[file:nix/nix-for-your-own-project.org][nix cookbook]] build your own projects with nix
 
   - unix environment
