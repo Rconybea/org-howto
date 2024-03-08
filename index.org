@@ -41,15 +41,13 @@
     - [[file:env/org-mode-resources.org][org-mode resources]]
     - [[file:env/publish-static-html.org][publish static html]] org-mode -> github pages
     - [[file:env/github-continuous-integration][continuous integration]] with github + nix + docker
+    - [[file:nix/nix-for-your-own-project.org][nix cookbook]] build your own projects with nix
 
   - unix environment
     - [[file:env/windows11-setup.org][windows11 setup]] wsl2 life hacks
     - file:env/gpg-setup.org GPG setup
     - file:env/email-setup.org email setup
     - [[file:env/cleanmbox.org]] automatically tidy email messages
-
-  - nix howto
-    - [[file:nix/nix-for-your-own-project.org][nix cookbook]] build your own project with nix
 
   - [[file:orgpub/org-examples.org][org-examples]] cookbook for org-mode publishing
   - file:d3/d3-examples.org d3 (javascript graphics library) examples

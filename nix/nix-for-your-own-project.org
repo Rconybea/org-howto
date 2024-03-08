@@ -1,4 +1,4 @@
-#+title: building your own project with nix
+#+title: Building your own project with nix
 #+author: Roland Conybeare
 #
 # org-publish options
