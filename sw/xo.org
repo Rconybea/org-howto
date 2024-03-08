@@ -38,22 +38,33 @@
 
 * C++ Libraries
 
+  http
   [[https://github.com/rconybea/xo-websock][xo-websock]] in-memory http server with websocket and python support.
   [[https://github.com/xo-webutil][xo-webutil]] low-level abstractions for http: endpoints, attribute lists.
+
+  stochastic processes + friends
   [[https://github.com/rconybea/xo-kalmanfilter][xo-kalmanfilter]] linear kalman filter with simulation support.
   [[https://github.com/rconybea/xo-process][xo-process]] stochastic processes and simulation-compatible realizations.
   [[https://github.com/rconybea/xo-distribution][xo-distribution]] probability distributions including Kolmogorov-Smirnov
+  [[https://github.com/rconybea/xo-statistics][xo-statistics]] header-only. online accumulators, histogram.
+  [[https://github.com/rconybea/xo-randomgen][xo-randomgen]] header-only. fast pseudo random number generators. xoshiro**,
+
+  complex event processing
   [[https://github.com/xo-simulator][xo-simulator]] deterministic event-based simulation
   [[https://github.com/rconybea/xo-reactor][xo-reactor]] api for complex event processors + simple polling implementation.
-  [[https://github.com/rconybea/xo-statistics][xo-statistics]] header-only. online accumulators, histogram.
-  [[https://github.com/rconybea/xo-printjson][xo-printjson]] json printer with plugin support.
+
+  data structures
   [[https://github.com/xo-ordinaltree][xo-ordinaltree]] header-only. fast in-memory B+ tree, red-black tree w/ ordinal statistics.
-  [[https://github.com/rconybea/xo-randomgen][xo-randomgen]] header-only. fast pseudo random number generators. xoshiro**,
+
+  general-purpose
   [[https://github.com/rconybea/xo-callback][xo-callback]] header-only. reentrant callback set
+  [[https://github.com/rconybea/xo-printjson][xo-printjson]] json printer with plugin support.
+  [[https://github.com/rconybea/reflect][xo-reflect]] reflection/introspection library
   [[https://github.com/rconybea/xo-subsys][xo-subsys]] orderly startup and shutdown for subsystems with plugin features
-  [[https://github.com/rconybea/xo-reflect][xo-reflect]] reflection library
   [[https://github.com/rconybea/xo-refcnt][xo-refcnt]] intrusive reference counting
   [[https://github.com/rconybea/xo-indentlog][xo-indentlog]] header-only logging library; colorized output with indentation tracking program call structure
+
+  build tools
   [[https://github.com/rconybea/xo-cmake][xo-cmake]] cmake modules.
 
 * External Dependencies

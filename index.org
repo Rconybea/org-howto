@@ -31,11 +31,10 @@
 * Contents
   - [[file:lessons/til.org][TIL]] lessons learned - problems & fixes
 
-  - [[file:env/development-environment.org][c++ development environment]] emacs/lsp/c++/cmake/nix/github/docker
   - software projects
     - xo; independent c++/python libraries for event-based simulation; cmake/c++/pybind11/websockets
-      - xo libraries
-      - xo-sm xo umbrella submodule build for all xo libs
+      - file:sw/xo.org xo libraries intro
+      - [[https://github.com/Rconybea/xo][xo]] umbrella repo for all xo libraries (using git submodules)
       - [[https://github.com/rconybea/xo-nix2][xo-nix2]] xo nix build using flakes (TODO: update per nix cookbook below)
       - [[https://github.com/rconybea/xo-nix3][xo-nix3]] git CI build; using nix-built custom docker container
       - [[https://github.com:rconybea/docker-xo-builder][docker-xo-builder]] custom docker container with all xo build deps
