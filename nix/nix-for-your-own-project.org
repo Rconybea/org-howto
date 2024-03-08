@@ -387,7 +387,7 @@
 
    Resources
 
-   - [[https://jade.fyi/blog/#flakes-arent-real/]] wonderful Jade Lovelace blog -- inspiration for this article!
+   - [[https://jade.fyi/blog/flakes-arent-real/]] wonderful Jade Lovelace blog -- inspiration for this article!
    - [[https://github.com/vlktomas/nix-examples]] Tomas Vlk nix examples
    - [[https://nixos.org/guides/nix-pills/]] Nix pills (nix tutorial, from the ground up)
    - https://ianthehenry.com/posts/how-to-learn-nix/ Ian Henry's "nix travel diary"
