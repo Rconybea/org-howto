@@ -1,0 +1,119 @@
+#+title: xo libraries
+#+author: Roland Conybeare
+#
+# org-publish options
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{} toc:4
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
+#+language: en
+# #+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# #+html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#+html_link_home: /web/index.html
+#+html_link_up: /web/index.html
+
+* Xo
+
+  A set of integrated libraries for event-based simulation with stochastic processes.
+  Intended for use in C++ and python applications.
+
+  Variety of features covered, for example:
+  kalman filters, stochastic processes, complex event processing, simulation, websockets.
+
+* Python Libraries
+
+  [[https://github.com/xo-pywebsock][xo-pywebsock]] in-memory http server; can expose entirely-native publishing pipeline via websockets.
+  [[https://github.com/rconybea/xo-pywebutil][xo-pywebutil]] lo-level abstractions for http: endpoints, attribute lists.
+  [[https://github.com/pykalmanfilter][xo-pykalmanfilter]] linear kalman filter with simulation support.
+  [[https://github.com/rconybea/xo-pydistribution][xo-pydistribution]] probability distributions e.g. Kolmogorov Smirnov
+  [[https://github.com/rconybea/xo-pyprocess][xo-pyprocess]] stochastic processes with simulation focus.
+  [[https://github.com/rconybea/xo-pyreactor][xo-pyreactor]] complex event processors + polling reactor.
+  [[https://github.com/rconybea/xo-pyprintjson][xo-pyprintjson]] plugin json printing for xo c++ classes.
+  [[https://github.com/rconybea/xo-pyreflect][xo-pyreflect]] plugin introspection for xo c++ classes.
+
+* C++ Libraries
+
+  [[https://github.com/rconybea/xo-websock][xo-websock]] in-memory http server with websocket and python support.
+  [[https://github.com/xo-webutil][xo-webutil]] low-level abstractions for http: endpoints, attribute lists.
+  [[https://github.com/rconybea/xo-kalmanfilter][xo-kalmanfilter]] linear kalman filter with simulation support.
+  [[https://github.com/rconybea/xo-process][xo-process]] stochastic processes and simulation-compatible realizations.
+  [[https://github.com/rconybea/xo-distribution][xo-distribution]] probability distributions including Kolmogorov-Smirnov
+  [[https://github.com/xo-simulator][xo-simulator]] deterministic event-based simulation
+  [[https://github.com/rconybea/xo-reactor][xo-reactor]] api for complex event processors + simple polling implementation.
+  [[https://github.com/rconybea/xo-statistics][xo-statistics]] header-only. online accumulators, histogram.
+  [[https://github.com/rconybea/xo-printjson][xo-printjson]] json printer with plugin support.
+  [[https://github.com/xo-ordinaltree][xo-ordinaltree]] header-only. fast in-memory B+ tree, red-black tree w/ ordinal statistics.
+  [[https://github.com/rconybea/xo-randomgen][xo-randomgen]] header-only. fast pseudo random number generators. xoshiro**,
+  [[https://github.com/rconybea/xo-callback][xo-callback]] header-only. reentrant callback set
+  [[https://github.com/rconybea/xo-subsys][xo-subsys]] orderly startup and shutdown for subsystems with plugin features
+  [[https://github.com/rconybea/xo-reflect][xo-reflect]] reflection library
+  [[https://github.com/rconybea/xo-refcnt][xo-refcnt]] intrusive reference counting
+  [[https://github.com/rconybea/xo-indentlog][xo-indentlog]] header-only logging library; colorized output with indentation tracking program call structure
+  [[https://github.com/rconybea/xo-cmake][xo-cmake]] cmake modules.
+
+* External Dependencies
+
+  | name            | deps                     |
+  |-----------------+--------------------------|
+  | all             | gcc, lcov, catch2, cmake |
+  | all py          | pybind11                 |
+  | xo-kalmanfilter | eigen                    |
+  | xo-websock      | libwebsockets            |
+  |-----------------+--------------------------|
+
+* Python Abstracion Tower
+
+  Each python library =pyfoo= depends on similarly-named c++ library =foo=.
+
+  #+name: xo-py-overview
+  #+header: :exports results
+  #+begin_src ditaa :file img/xo-py-overview.png
+
+       +----------+-----------+-----------+----------+
+       |          |           | pyprocess | pykalman |
+       |          |           |           |  -filter |
+       | pydistri | pywebsock +-----------+----------+
+       | -bution  |           |        pyreactor     |
+       |          |           +-------------+        |
+       |          |           | pyprintjson |        |
+       |          +-----------+-------------+--------+
+       |          | pywebutil |       pyreflect      |
+       +----------+-----------+----------------------+
+
+  #+end_src
+
+  #+RESULTS: xo-py-overview
+  [[file:img/xo-py-overview.png]]
+
+* C++ Abstraction Tower
+
+  #+name: xo-overview
+  #+header: :exports results
+  #+begin_src ditaa :file img/xo-overview.png
+
+       +--------+---------+-----------+---------+-----------+------------+
+       |        |         |  process  | kalman  | simulator |            |
+       |        |         |           | -filter |           |            |
+       | distri | websock +-----------+---------+-----------+            |
+       |-bution |         |                                 |            |
+       |        |         +---------+      reactor          |            |
+       |        |         |printjson|                       |            |
+       |        +---------+---------+-+-----------+---------+ statistics |
+       |        | webutil |  reflect  |           |         |            |
+       +--------+---------+-+---------+           | ordinal |            |
+       |      refcnt        |         |  callback |  tree   |            |
+       |        +-----------+ subsys  |           |         |            |
+       |        | indentlog |         |           |         |            |
+       +--------+-----------+---------+-----------+---------+------------+
+       |                         xo cmake modules                        |
+       +-----------------------------------------------------------------+
+
+  #+end_src
+
+  #+RESULTS: xo-overview
+  [[file:img/xo-overview.png]]

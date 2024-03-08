@@ -28,15 +28,23 @@
 
   Recent snapshots available from github pages: [[https://rconybea.github.io/web]]
 
-  Can for example serve locally on port =8080=:
-  #+begin_example
-  python3 -m http.server 8080 --directory ~/proj/public_html/org-howto
-  #+end_example
-
 * Contents
   - [[file:lessons/til.org][TIL]] lessons learned - problems & fixes
 
   - [[file:env/development-environment.org][c++ development environment]] emacs/lsp/c++/cmake/nix/github/docker
+  - software projects
+    - xo; independent c++/python libraries for event-based simulation; cmake/c++/pybind11/websockets
+      - xo libraries
+      - xo-sm xo umbrella submodule build for all xo libs
+      - [[https://github.com/rconybea/xo-nix2][xo-nix2]] xo nix build using flakes (TODO: update per nix cookbook below)
+      - [[https://github.com/rconybea/xo-nix3][xo-nix3]] git CI build; using nix-built custom docker container
+      - [[https://github.com:rconybea/docker-xo-builder][docker-xo-builder]] custom docker container with all xo build deps
+
+  - cmake-examples progressive walkthrough; cmake/c++/boost/gcov/pybind11/doxygen/sphinx; +nix
+    - [[https://github.com/rconybea/cmake-examples][cmake-examples]] primary repo
+    - [[https://github.com/rconybea/cmake-examples-nix][cmake-examples-nix]] nix build of cmake-examples
+
+  - [[file:env/development-environment.org][c++ development environment]] emacs/lsp/cmake/c++/nix/github/docker
     - [[file:env/emacs-setup.org][.emacs walkthrough]] terse!
     - [[file:env/org-mode-resources.org][org-mode resources]]
     - [[file:env/publish-static-html.org][publish static html]] org-mode -> github pages
