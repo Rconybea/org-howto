@@ -1,0 +1,73 @@
+#+title: Things that surprised me
+#+tags: @c++ @cmake @git @submodule @pybind11
+#+description: lessons learned while building cooperating c++ libraries using nix|cmake|pybind11|eigen amongst others
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: c++ cmake git submodule pybind11 eigen
+#+keywords: transitive-library-dependency
+#+setupfile: ../ext/fniessen/theme-readtheorg.setup
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#+html_link_home: ../index.html
+
+* Introduction
+
+In other words: Principle-of-Least-Surprise violations,  according to Roland.
+Not necessarily flaws.
+
+* c++
+
+** empty structs have non-zero size
+
+   Venerable standard requirement (inherited from C).
+
+   Standard requires that distinct variables always have different addresses.
+
+   Consider this example:
+
+   #+begin_src c++
+     #include <array>
+
+     using foo = struct {};
+
+     void loop() {
+         foo v[100];
+
+         foo * p = &(v[0]);
+         foo * e = &(v[100]);
+
+         for (; p != e; ++p) {
+             // do something
+         }
+     }
+   #+end_src
+
+   If =foo= has zero size,  and presumably =foo[100]= also has zero size,
+   then the for-loop executes zero times instead of 100,  which isn't likely to be what programmers expect.
+
+   The price of this consistency is that now =sizeof(foo[100])= is at least 100 bytes.
+
+   Starting in c++20,  we can mitigate this somewhat:
+
+   #+begin_src c++
+     struct bar {
+         [[no_unique_address]] foo empty1, empty2;
+         int counter;
+     };
+   #+end_src
+
+   The unique address requirement still applies to variables *of the same type*,
+   so =bar::empty1= and =bar::empty2= will have different addresses.
+
+   However,  variables of different types can have the same address,
+   as long as one of them has the =no_unique_address= attribute.

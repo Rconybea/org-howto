@@ -16,6 +16,8 @@
 #+setupfile: ext/fniessen/theme-readtheorg.setup
 #+language: en
 #
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="img/favicon.ico" />
+#
 # not using: prefer theme-readtheorg
 # +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
@@ -30,6 +32,7 @@
 
 * Contents
   - [[file:lessons/til.org][TIL]] lessons learned - problems & fixes
+  - [[file:lessons/ls2r.org][LS2R]] quirky corner cases
 
   - software projects
     - xo: c++/python libraries for event-based simulation; cmake/c++/pybind11/websockets
