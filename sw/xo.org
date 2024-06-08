@@ -12,8 +12,11 @@
 # html exporter options
 #+setupfile: ../ext/fniessen/theme-readtheorg.setup
 #+language: en
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#
 # #+infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
 # #+html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#
 #+html_link_home: /web/index.html
 #+html_link_up: /web/index.html
 
@@ -56,6 +59,11 @@
   data structures
   - [[https://github.com/rconybea/xo-ordinaltree][xo-ordinaltree]] header-only. fast in-memory B+ tree, red-black tree w/ ordinal statistics.
 
+  dimension [wip]
+  - [[https://github.com/rconybea/xo-unit][xo-unit]] header-only.  no-alloc constexpr exact unit conversions with some fractional-dimension support.
+  - [[https://github.com/rconybea/xo-ratio][xo-ratio]] header-only.  no-alloc constexpr exact ratio arithmetic.
+  - [[https://github.com/rconybea/xo-flatstring][xo-flatstring]] header-only. no-alloc plain-old-data constexpr string implementation
+
   general-purpose
   - [[https://github.com/rconybea/xo-callback][xo-callback]] header-only. reentrant callback set
   - [[https://github.com/rconybea/xo-printjson][xo-printjson]] json printer with plugin support.
@@ -69,15 +77,16 @@
 
 * External Dependencies
 
-  | name            | deps                     |
-  |-----------------+--------------------------|
-  | all             | gcc, lcov, catch2, cmake |
-  | all py          | pybind11                 |
-  | xo-kalmanfilter | eigen                    |
-  | xo-websock      | libwebsockets            |
-  |-----------------+--------------------------|
+  | name            | deps                                                 |
+  |-----------------+------------------------------------------------------|
+  | all             | gcc, lcov, catch2, cmake                             |
+  | all docs        | doxygen, graphvix, sphinx, breathe, sphinx_rtd_theme |
+  | all py          | pybind11                                             |
+  | xo-kalmanfilter | eigen                                                |
+  | xo-websock      | libwebsockets                                        |
+  |-----------------+------------------------------------------------------|
 
-* Python Abstracion Tower
+* Python Abstraction Tower
 
   Each python library =pyfoo= depends on similarly-named c++ library =foo=.
 
@@ -107,22 +116,22 @@
   #+header: :exports results
   #+begin_src ditaa :file img/xo-overview.png
 
-       +--------+---------+-----------+---------+-----------+------------+
-       |        |         |  process  | kalman  | simulator |            |
-       |        |         |           | -filter |           |            |
-       | distri | websock +-----------+---------+-----------+            |
-       |-bution |         |                                 |            |
-       |        |         +---------+      reactor          |            |
-       |        |         |printjson|                       |            |
-       |        +---------+---------+-+-----------+---------+ statistics |
-       |        | webutil |  reflect  |           |         |            |
-       +--------+---------+-+---------+           | ordinal |            |
-       |      refcnt        |         |  callback |  tree   |            |
-       |        +-----------+ subsys  |           |         |            |
-       |        | indentlog |         |           |         |            |
-       +--------+-----------+---------+-----------+---------+------------+
-       |                         xo cmake modules                        |
-       +-----------------------------------------------------------------+
+       +--------+---------+-----------+---------+-----------+------------+------------+
+       |        |         |  process  | kalman  | simulator |            |            |
+       |        |         |           | -filter |           |            |            |
+       | distri | websock +-----------+---------+-----------+            |            |
+       |-bution |         |                                 |            |            |
+       |        |         +---------+      reactor          |            |    unit    |
+       |        |         |printjson|                       |            |            |
+       |        +---------+---------+-+-----------+---------+ statistics |            |
+       |        | webutil |  reflect  |           |         |            |            |
+       +--------+---------+-+---------+           | ordinal |            +-------+    |
+       |      refcnt        |         |  callback |  tree   |            | ratio |    |
+       |        +-----------+ subsys  |           |         |            +-------+----+
+       |        | indentlog |         |           |         |            | flatstring |
+       +--------+-----------+---------+-----------+---------+------------+------------+
+       |                         xo cmake modules                                     |
+       +------------------------------------------------------------------------------+
 
   #+end_src
 
