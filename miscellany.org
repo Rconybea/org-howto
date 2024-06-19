@@ -1,0 +1,32 @@
+* custom domain with github repo.
+
+plan:
+1. put =CNAME= file under username.github.io repo,  so that sites are categorized under conybeare.net
+2. can have more than one sitemap file per robots.txt file
+
+   In =robots.txt=
+
+   #+begin_example
+
+   Sitemap: http://www.example.com/sitemap-host1.xml
+
+   Sitemap: http://www.example.com/sitemap-host1.xml
+
+   #+end_example
+
+3. can also use sitemap that is index of sitemap files
+
+   #+begin_example
+
+   <?xml version="1.0" encoding="UTF-8"?>
+   <sitemapindex xmlns="https://www.sitemaps.org/schemas/sitemap/0.9">
+     <sitemap>
+       <loc>http://www.example.com/sitemap1.xml.gz</loc>
+       <lastmod>2004-10-01T18:23:17+00:00</lastmod>
+     </sitemap>
+     <sitemap> ... </sitemap>
+   </sitemapindex>
+
+   #+end_example
+
+   Here =lastmod= tag is optional

@@ -1,0 +1,56 @@
+* Links
+  - https://breathe.readthedocs.io/en/latest/readthedocs.html publishing to readthedocs doxygen+breathe+sphinx
+  - https://breathe.readthedocs.io/en/latest doxygen->sphinx bridge
+  - https://bashtage.github.io/sphinx-material/rst-cheatsheet/rst-cheatsheet.html sphinx cheatsheet
+  - https://sublime-and-sphinx-guide.readthedocs.io/en/latest/code_blocks.html sphinx code-blocks.  instructions for emphasizing individual lines!
+
+  - https://ctrpeach.io/posts/cpp20-string-literal-template-parameters passing string literals as template parameters in c++20 (Kevin Hartman; 2020 article)
+  - https://www.brendangregg.com/perf.html perf examples
+  - https://stackoverflow.com/questions/2229336/linux-application-profiling answer mentioning pstack or lsstack
+  - https://www.pixelbeat.org/programming/profiling various tools;  some perf examples
+  - https://github.com/google/orbit linux application prgramming tool
+  - https://arjanvandergaag.nl/blog/using-yasnippet-in-emacs.html emacs yasnippet intro
+  - https://www.cppstories.com/2021/concepts-intro c++ concepts introduction
+  - https://medium.com/compass-true-north/seo-for-software-engineers-bd18daca7cd4 SEO for software engineers
+  - https://www.xahlee.info math, programming, tutorials..
+  - https://thomastrapp.com/posts/building-a-pypi-package-for-a-modern-cpp-project build cmake/c++/boost/swig package for pypi (chirpy jekyll theme)
+  - https://miikanissi.com sitemap, RSS feed in org-mode
+  - https://ogbe.net/blog/blogging_with_org blogging with org-mode + nothing else
+  - https://www.guid2wsl.com/x11 sep 2021 - VcXsrv - actively maintained X11 windows server compiled for windows.
+  - https://github.com/bolero-MURAKAMI/Sprout/tree/master/sprout/math constexpr containers algos random numbers parsing raytracing(!)
+  - https://github.com/kthohr/gcem compile-time math functions pow, sqrt etc.
+  - https://github.com/kthohr/stats compile-time statistics library (built on gcem)
+
+  - https://linuxconfig.org/how-to-install-and-manage-fonts-on-linux fontconfig tutorial
+
+  - https://martibosch.github.io/jupyter-emacs-universe jupyter-like stuff from emacs
+
+  - https://github.com/niekbouman/ctbignum header-only constexpr bignums
+
+  - https://oleksandrkvl.github.io/2021/04/02/cpp-20-overview.html c++20 examples
+
+  - https://mariusbancila.ro/blog/2022/06/20/requires-expressions-and-requires-clauses-in-cpp20 c++20 concept stuff
+
+  - https://nixos.wiki/wiki/Nixpkgs/Create_and_debug_packages adding packages to nixpkgs
+
+  - https://magit.vc/manual/magit magit manual
+
+  - https://www.florian-diesch.de/doc/sphinx/themes-and-pygments-styles/index.html sphinx+pygments styles
+
+  - https://devhints.io/plantuml  plantuml cheatsheet
+
+  - https://www.jsums.edu/robotics/files/2016/12/FECS17_Proceedings-FEC3555.pdf  simd coding
+    c[]
+    __m256 m0 = _mm256_setzero_ps();
+    __m256 m1 = _mm256_rboadcast_ss(a+i*n+k)
+    __m256 m2 = _mm256_load_ps((b+k*n+j));
+    __m256 m3 = _mm256_mul_ps(m1, m2)
+    m0 = __mm256_add_ps(m0, m3)
+    _mm256_store_ps(c+i*n+j, m0);
+
+    _mm512_masz_loadu_pd(mask, v[]+i)
+    _mm512_loadu_pd(v[] + i)
+    _mm512_fmadd_pd(m1, m2, msum)
+    _mm512_set1_pd broadcast float64 element to destination
+    _mm512_set_pd(double e0, .., double e7)  broadcast packed float64 elements
+    _mm512_setzero_pd make vector __m512d with all elts set to zero VXORPD
