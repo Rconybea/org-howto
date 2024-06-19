@@ -34,7 +34,7 @@
   - [[https://github.com/rconybea/xo-pywebutil][xo-pywebutil]] lo-level abstractions for http: endpoints, attribute lists.
   - [[https://github.com/rconybea/xo-pykalmanfilter][xo-pykalmanfilter]] linear kalman filter with simulation support.
   - [[https://github.com/rconybea/xo-pymatrix][xo-pymatrix]] matrix algorithms [wip]
-  - [[ttps://github.com/rconybea/xo-pydistribution][xo-pydistribution]] probability distributions e.g. Kolmogorov Smirnov
+  - [[https://github.com/rconybea/xo-pydistribution][xo-pydistribution]] probability distributions e.g. Kolmogorov Smirnov
   - [[https://github.com/rconybea/xo-pyprocess][xo-pyprocess]] stochastic processes with simulation focus.
   - [[https://github.com/rconybea/xo-pyreactor][xo-pyreactor]] complex event processors + polling reactor.
   - [[https://github.com/rconybea/xo-pyprintjson][xo-pyprintjson]] plugin json printing for xo c++ classes.
