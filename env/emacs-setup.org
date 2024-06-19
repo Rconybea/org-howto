@@ -31,65 +31,116 @@
 Compatibility with some Common Lisp idioms
 
 #+begin_src elisp
-(require 'cl-loaddefs)
+  (require 'cl-loaddefs)
+#+end_src
+
+** package bootstrapping
+
+#+begin_src elisp
+  (require 'package)
+  ;;(add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/"))
+
+  (let ((repos '(("melpa" . "https://melpa.org/packages/")
+                 ;;("marmalade" . "http://marmalade-repo.org/packages/")
+                 ;;("elpa"      . "http://elpa.gnu.org/packages/")
+                 ;;("elpa" . "http://tromey.com/elpa/")
+                 ;;("melpa"    . "http://melpa.milkbox.net/packages/")
+                 )))
+    (while repos
+      (add-to-list 'package-archives (car repos) t)
+      (setq repos (cdr repos))))
+
+  (package-initialize)
+
+  (when (not package-archive-contents)
+    (package-refresh-contents))
+
+  (unless (package-installed-p 'use-package)
+    (package-refresh-contents)
+    (package-install 'use-package))
+#+end_src
+
+And some packages to autofetch
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; list of emacs packages to auto-install
+  ;; (superseded by (use-package)...?  I may be confused about this)
+  ;; ----------------------------------------------------------------
+  ;;
+  (defvar roland/packages
+    '(surround treemacs highlight rg treemacs-projectile treemacs-magit
+               lsp-mode lsp-treemacs lsp-ivy magit company flycheck exec-path-from-shell projectile yasnippet))
+
+  ;; install missing packages if they are whitelisted in roland/packages
+  ;;
+  (dolist (p roland/packages)
+    (when (not (package-installed-p p))
+      (package-install p)))
 #+end_src
 
 ** quality-of-life details
 
 *** qol: display
 #+begin_src elisp
-;; grab a little bit of extra screen real estate
+  ;; grab a little bit of extra screen real estate
 
-;; disable scrollbars
-(if (fboundp 'scroll-bar-mode)
-    (scroll-bar-mode -1))
-;; disable toolbars
-(if (fboundp 'tool-bar-mode)
-    (tool-bar-mode -1))
-;; disable menu bar
-(if (fboundp 'menu-bar-mode)
-    (menu-bar-mode -1))
+  ;; disable scrollbars
+  (if (fboundp 'scroll-bar-mode)
+      (scroll-bar-mode -1))
+  ;; disable toolbars
+  (if (fboundp 'tool-bar-mode)
+      (tool-bar-mode -1))
+  ;; disable menu bar
+  (if (fboundp 'menu-bar-mode)
+      (menu-bar-mode -1))
 
-;; prevent initial emacs splash screen
-(setq inhibit-splash-screen t)
+  ;; prevent initial emacs splash screen
+  (setq inhibit-splash-screen t)
 #+end_src
 
 *** qol: yes-or-no
 
 #+begin_src elisp
-;; don't like having to type 'yes' or 'no';  'y' or 'n' will do
+  ;; don't like having to type 'yes' or 'no';  'y' or 'n' will do
 
-(defalias 'yes-or-no-p 'y-or-n-p)
+  (defalias 'yes-or-no-p 'y-or-n-p)
 #+end_src
 
 *** qol: nuke ctrl-Z
 
 #+begin_src elisp
-;; C-z bound to suspend frame is annoying,  because
-;; it gets typed by accident too often.
-;; C-x C-z remains available as an alternative binding
-(global-unset-key (kbd "C-z"))
-(global-unset-key (kbd "<return>"))
+  ;; C-z bound to suspend frame is annoying,  because
+  ;; it gets typed by accident too often.
+  ;; C-x C-z remains available as an alternative binding
+  (global-unset-key (kbd "C-z"))
+  (global-unset-key (kbd "<return>"))
+#+end_src
+
+*** qol: shortcut to bury current buffer
+
+#+begin_src elisp
+  (global-set-key (kbd "C-x b") 'bury-buffer)
 #+end_src
 
 *** qol: navigation
 
 #+begin_src elisp
-(global-set-key (kbd "C-x t") 'beginning-of-buffer)
-(global-set-key (kbd "C-x e") 'end-of-buffer)
+  (global-set-key (kbd "C-x t") 'beginning-of-buffer)
+  (global-set-key (kbd "C-x e") 'end-of-buffer)
 
-;; keeping window hopping to current frame allows for satellite frames that are
-;; mostly display-only (e.g. magit status)
-;;
-(global-set-key (kbd "C-x o") 'other-window)
-(global-set-key (kbd "C-x p") (lambda () (interactive) (other-window -1)))
-;;(global-set-key "\C-xo" 'next-multiframe-window)
-;;(global-set-key "\C-xp" 'previous-multiframe-window)
+  ;; keeping window hopping to current frame allows for satellite frames that are
+  ;; mostly display-only (e.g. magit status)
+  ;;
+  (global-set-key (kbd "C-x o") 'other-window)
+  (global-set-key (kbd "C-x p") (lambda () (interactive) (other-window -1)))
+  ;;(global-set-key "\C-xo" 'next-multiframe-window)
+  ;;(global-set-key "\C-xp" 'previous-multiframe-window)
 
-(global-set-key (kbd "S-<left>") 'windmove-left)
-(global-set-key (kbd "S-<right>") 'windmove-right)
-(global-set-key (kbd "S-<up>") 'windmove-up)
-(global-set-key (kbd "S-<down>") 'windmove-down)
+  (global-set-key (kbd "S-<left>") 'windmove-left)
+  (global-set-key (kbd "S-<right>") 'windmove-right)
+  (global-set-key (kbd "S-<up>") 'windmove-up)
+  (global-set-key (kbd "S-<down>") 'windmove-down)
 #+end_src
 
 *** qol: kill
@@ -107,31 +158,31 @@ Compatibility with some Common Lisp idioms
 This tweak allows using zap on necessary punctuation characters,
 without swallowing them.
 #+begin_src elisp
-;; use zap-up-to-char instead of zap-to-char
-(autoload 'zap-up-to-char "misc"
-  "kill up to, but not including ARG'th occurence of CHAR.
-\(fn arg char)"
-  'interactive)
-(global-set-key "\M-z" 'zap-up-to-char)
+  ;; use zap-up-to-char instead of zap-to-char
+  (autoload 'zap-up-to-char "misc"
+    "kill up to, but not including ARG'th occurence of CHAR.
+  \(fn arg char)"
+    'interactive)
+  (global-set-key "\M-z" 'zap-up-to-char)
 #+end_src
 
 *** qol: query replace
 
 #+begin_src elisp
-;; M-x qr --> M-x query-replace
-;; M-x qrr --> M-x query-replace-regexp
+  ;; M-x qr --> M-x query-replace
+  ;; M-x qrr --> M-x query-replace-regexp
 
-(defalias 'qr 'query-replace)
-(defalias 'qrr 'query-replace-regexp)
+  (defalias 'qr 'query-replace)
+  (defalias 'qrr 'query-replace-regexp)
 #+end_src
 
 *** qol: mouse-3 on macos
 
 #+begin_src elisp
-;; mouse-3 annoying on macbook 11.3
+  ;; mouse-3 annoying on macbook 11.3
 
-(if (eq system-type 'darwin)
-    (global-unset-key [mouse-3]))
+  (if (eq system-type 'darwin)
+      (global-unset-key [mouse-3]))
 #+end_src
 
 *** qol: mouse avoidance
@@ -145,62 +196,6 @@ Make cursor and mouse easier to see
 #+begin_src elisp
 (set-mouse-color "red")
 (set-cursor-color "red")
-#+end_src
-
-*** qol: default font
-
-#+begin_src elisp
-;; ----------------------------------------------------------------
-;; default font
-
-;; note:
-;;   C-x C-+             increase buffer text size
-;;   C-x C-=             something buffer text size
-;;   C-x C--             decrease buffer text size
-;;   C-x C-0             restore default buffer text size
-;;   M-x describe-font   display font canonical name + stats in a new buffer
-;;
-
-;; to install inconsolata on ubuntu:
-;;   $ sudo apt-get -y install fonts-inconsolata
-;; for nix,  can use package
-;;   nixpkgs.inconsolata-lgc
-
-(add-to-list
- 'default-frame-alist
- '(font . "-PfEd-Inconsolata-medium-normal-normal-*-14-*-*-*-m-0-iso10646-1"))
-#+end_src
-
-*** qol: initial window height
-
-#+begin_src elisp
-(defvar target-frame-width (+ 1 (* 2 135)))
-
-(defun set-frame-size-from-screen-resolution ()
-  "Infer suitable default frame size.
-Reminder: no such thing as .Xresources under WSL."
-  (interactive)
-  (if (display-graphic-p)
-      (progn
-        (let* ((horizontal-room (/ (x-display-pixel-width)
-                                   (frame-char-width)))
-               (using-width (min target-frame-width
-                                 horizontal-room)))
-          (set-frame-width (selected-frame)
-                           using-width)
-          ;;(add-to-list 'default-frame-alist (cons 'width using-width))
-          )
-        ;; subtracting 200 pixels of vertical space
-        (let* ((vertical-padding 100)
-               (vertical-room (/ (- (x-display-pixel-height)
-                                    vertical-padding)
-                                 (frame-char-height))))
-          (set-frame-height (selected-frame)
-                            vertical-room)
-          ;;(add-to-list 'default-frame-alist (cons 'height vertical-room))
-          ))))
-
-(set-frame-size-from-screen-resolution)
 #+end_src
 
 ** package: try
@@ -225,47 +220,130 @@ Reminder: no such thing as .Xresources under WSL."
 ** backup file location
 
 #+begin_src elisp
-;; backup location
-;; (don't clutter filesystem with emacs backup files)
+  ;; backup location
+  ;; (don't clutter filesystem with emacs backup files)
 
-(let ((backup-dir "~/tmp/emacs/backups")
-      (auto-saves-dir "~/tmp/emacs/autosaves"))
-  ;; create dirs if needed
-  (dolist (dir (list backup-dir auto-saves-dir))
-    (when (not (file-directory-p dir))
-      (make-directory dir t)))
-  (setq backup-directory-alist `(("." . ,backup-dir))
-        auto-save-file-name-transforms `((".*" ,auto-saves-dir t))
-        auto-save-list-file-prefix (concat auto-saves-dir ".saves-")
-        ;; tramp-backup-directory-alist `((".*" . ,backup-dir))
-        ;; tramp-auto-save-directory auto-saves-dir
-        )
-  (setq backup-by-copying t
-        delete-old-versions t
-        version-control t
-        kept-new-versions 5
-        kept-old-versions 2)
-  )
+  (let ((backup-dir "~/tmp/emacs/backups")
+        (auto-saves-dir "~/tmp/emacs/autosaves"))
+    ;; create dirs if needed
+    (dolist (dir (list backup-dir auto-saves-dir))
+      (when (not (file-directory-p dir))
+        (make-directory dir t)))
+    (setq backup-directory-alist `(("." . ,backup-dir))
+          auto-save-file-name-transforms `((".*" ,auto-saves-dir t))
+          auto-save-list-file-prefix (concat auto-saves-dir ".saves-")
+          ;; tramp-backup-directory-alist `((".*" . ,backup-dir))
+          ;; tramp-auto-save-directory auto-saves-dir
+          )
+    (setq backup-by-copying t
+          delete-old-versions t
+          version-control t
+          kept-new-versions 5
+          kept-old-versions 2)
+    )
 #+end_src
 
 ** prefer ibuffer
 
 #+begin_src elisp
-;; ----------------------------------------------------------------
-;; replace list-buffers (^x^b) with ibuffer
-;; ibuffer is much better
+  ;; ----------------------------------------------------------------
+  ;; replace list-buffers (^x^b) with ibuffer
+  ;; ibuffer is much better
 
-(global-set-key "\C-x\C-b" 'ibuffer)
+  (global-set-key "\C-x\C-b" 'ibuffer)
 #+end_src
+
+** package: surround
+
+Region selection based on matching parens
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; M-' i (   mark text up to but excluding surrounding ().
+  ;;           M-' ( will do the same
+  ;; M-' o (   mark surrounding ()  can use either ( or ) to identify paren type
+  ;;           M-' ) will do the same
+  ;; M-' s {   surround word-around-point with {}
+  ;; M-' d (   delete innermost surrounding pair of ()'s
+  ;; M-' k (   kill surrounding text up to but not including innermost surrounding () pair
+  ;; M-' K (   kill surrounding text including innermost surrounding () pair
+  ;;
+  (use-package surround :ensure t
+    :bind-keymap ("M-'" . surround-keymap))
+#+end_src
+
+** package: highlight
+
+Manual highlighting
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; highlight.el
+  ;;
+  ;;   C-x X u r    unhighlight region
+  ;;
+  (use-package highlight
+    :ensure t)
+#+end_src
+
+** track current directory reliably in =*shell*= buffers
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; Minor mode to track directory via /proc.
+  ;; Will not work on macos!
+  ;;
+
+  (defun shell-procfs-dirtrack (str)
+      ;;; shell-procfs-dirtrack --- use /proc/PID/cwd to track current working directory
+      ;;; for emacs shell buffers.  From emacswiki "Shell Dirtrack by Procfs"
+      ;;;
+    (prog1 str
+      (when (string-match comint-prompt-regexp str)
+        (let ((directory (file-symlink-p
+                          (format "/proc/%s/cwd"
+                                  (process-id
+                                   (get-buffer-process
+                                    (current-buffer)))))))
+          (when (file-directory-p directory)
+            (cd directory))))))
+
+  ;; have to enable this
+  ;;
+  (define-minor-mode shell-procfs-dirtrack-mode
+    "Track shell directory by inspecting procfs."
+    nil nil nil
+    (cond (shell-procfs-dirtrack-mode
+           (when (bound-and-true-p shell-dirtrack-mode)
+             (shell-dirtrack-mode 0))
+           (when (bound-and-true-p dirtrack-mode)
+             (dirtrack-mode 0))
+           (add-hook 'comint-preoutput-filter-functions
+                     'shell-procfs-dirtrack nil t))
+          (t
+           (remove-hook 'comint-preoutput-filter-functions
+                        'shell-procfs-dirtrack t))))
+
+  ;; ----------------------------------------------------------------
+  ;; command shell.
+  ;;
+  ;; invoking emacs from
+  ;;   nix develop -i
+  ;; interferes with its ability to figure out suitable shell
+  ;; tell emacs to use bash here
+  ;;
+  (setq-default shell-file-name "bash")
+#+end_src
+
 
 ** dynamic abbreviations
 
 For consciously correcting typos
 #+begin_src elisp
-;; ----------------------------------------------------------------
-;;
-(global-set-key (kbd "C-<tab>") #'dabbrev-expand)
-(define-key minibuffer-local-map (kbd "C-<tab>") #'dabbrev-expand)
+  ;; ----------------------------------------------------------------
+  ;;
+  (global-set-key (kbd "C-<tab>") #'dabbrev-expand)
+  (define-key minibuffer-local-map (kbd "C-<tab>") #'dabbrev-expand)
 #+end_src
 
 ** package: flycheck
@@ -274,21 +352,63 @@ Flycheck runs in the background.  It automatically (and subtly) highlights synta
 Preferred over built-in flyspell.
 
 #+begin_src elisp
-;; enable flycheck
+  ;; enable flycheck
 
-;; see:
-;;   https://www.flycheck.org/en/latest/user/quickstart.html#flycheck-quickstart
-;;
-;; keybindings:
-;;   C-c ! v              show version + configuration info for this buffer
-;;   C-c ! n / C-c ! p    inspect errors on this line
-;;   C-c ! l              show errors for this buffer
+  ;; see:
+  ;;   https://www.flycheck.org/en/latest/user/quickstart.html#flycheck-quickstart
+  ;;
+  ;; keybindings:
+  ;;   C-c ! v              show version + configuration info for this buffer
+  ;;   C-c ! n / C-c ! p    inspect errors on this line
+  ;;   C-c ! l              show errors for this buffer
 
-(global-flycheck-mode)
+  (global-flycheck-mode)
 
-(if (eq system-type 'darwin)
-    ;; need this for flycheck on macos only..
-    (exec-path-from-shell-initialize))
+  (if (eq system-type 'darwin)
+      ;; need this for flycheck on macos only..
+      (exec-path-from-shell-initialize))
+#+end_src
+
+** package: ripgrep
+
+Projectile uses this automagically if available
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; ripgrep for search
+  ;; see [[rg.el.readthedocs.io/en/latest/configuration.html]]
+  ;;
+  ;;  rg-executable-per-connection
+  ;;  rg-custom-type-aliases
+  ;;  rg-prioritized -type-aliases
+  ;;  rg-default-alias-fallback
+  ;;  rg-command-line-flags
+  ;;  rg-group-result
+  ;;  rg-show-columns
+  ;;  rg-ignore-case
+  ;;  rg-hide-command t
+  ;;  rg-keymap-prefix "C-c s"
+  ;;  rg-use-transient-menu t
+  ;;  rg-show-header t
+  ;;  rg-buffer-name "rg"
+  ;;  rg-ignore-ripgreprc t
+  ;;  ...and more...
+  ;;
+  ;; See also rg-isearch  to use ripgrep with isearch
+  ;;
+  (use-package rg
+    :ensure t
+    :init (progn
+            (rg-enable-default-bindings)
+            ;; want see rg command to debug it :)
+            (setq rg-hide-command nil)
+            ;; need filename to report line number for navigation with C-x ` to work
+            (setq rg-command-line-flags nil)
+            ;;(setq rg-use-transient-menu t)  etc
+            ;; trying to make it easy to visit match results in context
+            (setq rg-group-result nil)
+            )
+    )
 #+end_src
 
 ** completion assist
@@ -296,13 +416,48 @@ Preferred over built-in flyspell.
 *** completion: ivy
 
 #+begin_src elisp
-(use-package ivy
-  :ensure t
-  :init (progn
-          (setq ivy-use-virtual-buffers t)
-          (setq ivy-count-format "%d/%d) ")
-          (ivy-mode 1))
-  )
+  ;; ----------------------------------------------------------------
+  ;; ivy (completion assist)
+  ;;
+  ;; keybindings:
+  ;;   M-x     ivy-mode         disable/enable toggle
+  ;;   C-x b   ivy-switch-buffer
+  ;;   C-c v   ivy-push-view
+  ;;   C-c V   ivy-pop-view
+  ;;   ivy-resume           resume last ivy completion
+  ;;
+  ;; in minibuffer:
+  ;;   C-n   ivy-next-line             next line
+  ;;   C-p   ivy-prev-line             previous line
+  ;;   M-<   ivy-beginning-of-buffer   first candidate
+  ;;   M->   ivy-end-of-buffer         last candidate
+  ;;   C-v   ivy-scroll-up-command     scroll up ivy-height lines
+  ;;   M-v   ivy-scroll-down-command   scroll down ivy-height lines
+  ;;
+  ;; actions (on selected choice):
+  ;;   c-M or RET   ivy-done               default action + exit minibuffer
+  ;;   M-o          ivy-dispatching-done   present menu of choices
+  ;;   C-j          ivy-alt-done           for file name, cd into selected dir candidate
+  ;;   TAB          ivy-partial-or-done    completion on current input
+  ;;   C-M-j        ivy-immediate-done     exit with current candidate (exact spelling)
+  ;;   C-'          ivy-avy                use avy to select from current candidate page
+  ;;
+  ;;   C-M-m        ivy-call               non-exiting version of ivy-done
+  ;;   C-M-o        ivy-dispatching-call   non-exiting version of ivy-dispatching-done
+  ;;
+  ;;   C-o          hydra-ivy/body         invoke hydra menu with short key bindings
+  (use-package ivy
+    :ensure t
+    :init (progn
+
+            (setq ivy-use-virtual-buffers t)
+            (setq ivy-count-format "(%d/%d) ")
+            (ivy-mode 1)
+            (global-set-key (kbd "C-x b") 'ivy-switch-buffer)
+            ;; or (bind-key "C-x b" 'ivy-switch-buffer)
+            )
+    )
+
 #+end_src
 
 ** C++
@@ -310,59 +465,62 @@ Preferred over built-in flyspell.
 *** c++: indenting + tabs
 
 #+begin_src elisp
-;; in general want to expand tabs,  + use 4 characters
+  ;; in general want to expand tabs,  + use 4 characters
 
-(setq-default indent-tabs-mode nil)
-(setq-default tab-width 4)
+  (setq-default indent-tabs-mode nil)
+  (setq-default tab-width 4)
 
-;; used in style-specific modes, e.g. c++-mode
-;; other styles: gnu | k&r | bsd | whitesmith | stroustrup | ellemtel | user
-;;
-;; C-c . <style>    choose predefined style
-;;(defvar 'c-default-style)
-;;(defvar 'c-basic-offset)
+  ;; used in style-specific modes, e.g. c++-mode
+  ;; other styles: gnu | k&r | bsd | whitesmith | stroustrup | ellemtel | user
+  ;;
+  ;; C-c . <style>    choose predefined style
+  ;;(defvar 'c-default-style)
+  ;;(defvar 'c-basic-offset)
 
-(setq-default c-default-style "linux")
-(setq-default c-basic-offset 4)
+  (setq-default c-default-style "linux")
+  (setq-default c-basic-offset 4)
 
-(defun disable-tabs ()
-  "Function to disable tab insertion; intended to be attached via c++-mode-hook."
-  (if (boundp 'indent-tabs-mode)
-      (setq indent-tabs-mode nil)
-    (error "Expected variable [indent-tabs-mode] to be defined")
-    ))
+  (defun disable-tabs ()
+    "Function to disable tab insertion; intended to be attached via c++-mode-hook."
+    (if (boundp 'indent-tabs-mode)
+        (setq indent-tabs-mode nil)
+      (error "Expected variable [indent-tabs-mode] to be defined")
+      ))
 
-;; in general disable tabs (expand to spaces)
-(add-hook 'c++-mode-hook 'disable-tabs)
+  ;; in general disable tabs (expand to spaces)
+  (add-hook 'c++-mode-hook 'disable-tabs)
 #+end_src
 
 *** c++: whitespace
 
 #+begin_src elisp
-;; will be using customized whitespace mode,  that just highlights trailing spaces
-;;
-(add-hook 'c++-mode-hook 'whitespace-mode)
+  ;; will be using customized whitespace mode,  that just highlights trailing spaces
+  ;;
+  (add-hook 'c++-mode-hook 'whitespace-mode)
 
-;; tabs:  visible tab characters
-;; trailing: visible trailing whitespace
-;;
-(setq-default whitespace-style '(face tabs tab-mark trailing))
+  ;; tabs:  visible tab characters
+  ;; trailing: visible trailing whitespace
+  ;;
+  (setq-default whitespace-style '(face tabs tab-mark trailing))
 
-;; 124 is | character
-(setq-default whitespace-display-mappings
-          '((tab-mark 9 [124 9] [92 9])))
+  ;; 124 is | character
+  (setq-default whitespace-display-mappings
+                '((tab-mark 9 [124 9] [92 9])))
 
-(defun untabify-except-makefiles ()
-  "Replace tabs with spaces except in makefiles."
-  (unless (derived-mode-p 'makefile-mode)
-    (prog1 nil
-      (untabify (point-min) (point-max))
-      (delete-trailing-whitespace)
-      )))
+  (defun untabify-except-makefiles ()
+    "Replace tabs with spaces except in makefiles."
+    (unless (derived-mode-p 'makefile-mode)
+      (prog1 nil
+        (untabify (point-min) (point-max))
+        (delete-trailing-whitespace)
+        )))
 
-(add-hook 'c++-mode-hook
-          #'(lambda ()
-              (add-hook 'before-save-hook #'untabify-except-makefiles)))
+  (add-hook 'c++-mode-hook
+            #'(lambda ()
+                (add-hook 'before-save-hook #'untabify-except-makefiles)))
+  (add-hook 'nix-mode-hook
+            #'(lambda ()
+                (add-hook 'before-save-hook #'untabify-except-makefiles)))
 #+end_src
 
 *** cmake editing
@@ -381,8 +539,14 @@ Preferred over built-in flyspell.
 *** c++ completion
 
 #+begin_src elisp
-(require 'company)
-(add-hook 'c++-mode-hook 'company-mode)
+  (use-package company
+    :config
+    (progn
+      (setq company-minimum-prefix-length 1) ;; LOOKS LIKE MUST HAVE THIS for company to activate
+      (setq company-idle-delay 0.1) ;; default 0.2
+      ))
+
+  (add-hook 'c++-mode-hook 'company-mode)
 #+end_src
 
 *** *compilation* buffer
@@ -414,120 +578,250 @@ For example,  to respond to =cmake= colored output
 *** dev: snippets
 
 #+begin_src elisp
-;; snippets!
-;; (see http://capitaomorte.github.io/yasnippet,
-;;  http://githib.com/capitaomorte/yasnippet)
-;; snippets in ~/.emacs.d/elpa/yasnippet-20200604.246/snippets
-;;
-;; summary:
-;;  M-x yas-expand -- try to expand snippet before point.  Usually TAB
-;;  M-x yas-load-directory -- load a directory of snippets
-;;  M-x yas-activate-extramode -- add snippets for a particular mode, in the current buffer
-;;  M-x yas-insert-snippet -- insert snippet at point
-;;  M-x yas-visit-snippet-file -- prompt for snippet expansion,  but go to definition
-;;  M-x yas-new-snippet -- create a new snippet in ~/.emacs.d/snippets, function of major mode
-;;  M-x yas-load-snippet-buffer -- load the snippet you are editing C-c C-c in snippet-mode
-;;  M-x yas-tryout-snippet -- insert current snippet in a new empty buffer C-c C-t in snippet-mode
-;;  M-x yas-describe-tables -- list known snippets
-;;
+  ;; snippets!
+  ;; (see http://capitaomorte.github.io/yasnippet,
+  ;;  http://githib.com/capitaomorte/yasnippet)
+  ;; snippets in ~/.emacs.d/elpa/yasnippet-20200604.246/snippets
+  ;;
+  ;; summary:
+  ;;  M-x yas-expand -- try to expand snippet before point.  Usually TAB
+  ;;  M-x yas-load-directory -- load a directory of snippets
+  ;;  M-x yas-activate-extramode -- add snippets for a particular mode, in the current buffer
+  ;;  M-x yas-insert-snippet -- insert snippet at point
+  ;;  M-x yas-visit-snippet-file -- prompt for snippet expansion,  but go to definition
+  ;;  M-x yas-new-snippet -- create a new snippet in ~/.emacs.d/snippets, function of major mode
+  ;;  M-x yas-load-snippet-buffer -- load the snippet you are editing C-c C-c in snippet-mode
+  ;;  M-x yas-tryout-snippet -- insert current snippet in a new empty buffer C-c C-t in snippet-mode
+  ;;  M-x yas-describe-tables -- list known snippets
+  ;;
 
-(use-package yasnippet
-  :ensure t
-  :config (yas-global-mode 1))
+  (use-package yasnippet
+    :ensure t
+    :config (yas-global-mode 1))
 
-(add-hook 'c++-mode-hook 'yas-minor-mode)
-(add-hook 'cmake-mode-hook 'yas-minor-mode)
-(add-hook 'emacs-lisp-mode-hook 'yas-minor-mode)
+  (add-hook 'c++-mode-hook 'yas-minor-mode)
+  (add-hook 'cmake-mode-hook 'yas-minor-mode)
+  (add-hook 'emacs-lisp-mode-hook 'yas-minor-mode)
 
-(global-set-key (kbd "C-<return>") 'yas-expand)
-(global-set-key (kbd "C-c & C-n") 'yas-new-snippet)
-(global-set-key (kbd "C-c & C-v") 'yas-visit-snippet-file)
+  (global-set-key (kbd "C-<return>") 'yas-expand)
+  (global-set-key (kbd "C-c & C-n") 'yas-new-snippet)
+  (global-set-key (kbd "C-c & C-v") 'yas-visit-snippet-file)
 
-;;(yas-global-mode t)
-;;;; yas-snippet-dirs
-;;;; yas-installed-snippets-dir
-;;;; (yas-reload-all)
+  ;;(yas-global-mode t)
+  ;;;; yas-snippet-dirs
+  ;;;; yas-installed-snippets-dir
+  ;;;; (yas-reload-all)
+#+end_src
+
+*** dev: treemacs
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; treemacs
+
+  (use-package treemacs
+    :config
+    (progn
+      (setq treemacs-follow-after-init t
+            treemacs-is-never-other-window t
+            treemacs-width 40)
+      (treemacs-follow-mode t)
+      (treemacs-filewatch-mode t)
+      (treemacs-git-mode 'simple)
+      (treemacs-fringe-indicator-mode t)
+      (treemacs-resize-icons 11)  ;; default is 22
+      )
+    :hook (after-init . treemacs)
+    :bind (:map global-map ("C-M-t" . treemacs)))
 #+end_src
 
 *** dev: projectile
 
 #+begin_src elisp
-;; projectile
+  ;; projectile
 
-(defconst modi/rg-arguments
-  `("--line-number" ; print line numbers
-    "--smart-case"
-    "--follow"      ; follow symlinks
-    "--mmap"        ; use memory-map optimization where available
+  (defconst modi/rg-arguments
+    `("--line-number" ; print line numbers
+      "--smart-case"
+      "--follow"      ; follow symlinks
+      "--mmap"        ; use memory-map optimization where available
+      )
+    "default rg args used in the `projectile` package.")
+
+  (defun modi/advice-projectile-use-rg (mode)
+    "always use `rg' to establish project file list"
+    (mapconcat 'identity
+               (append '("\\rg") ; unalised version of rg
+                       modi/rg-arguments
+                       '("--null"   ; null-separated results
+                         "--files"  ; locate + print file names (don't search them)
+                         ))
+               " "))
+
+  (use-package projectile
+    :ensure t
+    :init (progn (projectile-mode +1)
+                 ;;(setq projectile-indexing-method 'native) -- want to use rg below
+                 (setq projectile-project-compilation-dir "")
+                 (setq projectile-enable-caching t)
+                 ;; using rg to identify project source files:
+                 ;; - honors .gitignore
+                 ;; - fast, too!
+                 (when (executable-find "rg")
+                   (progn
+                     (advice-add 'projectile-get-ext-command
+                                 :override #'modi/advice-projectile-use-rg))))
+    :bind (:map projectile-mode-map
+                ("s-p" . projectile-command-map)
+                ("C-c p" . projectile-command-map)))
+#+end_src
+
+*** dev: treemacs+projectile integration
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; treemacs-projectile
+
+  ;; use
+  ;;  M-x treemacs-add-project-to-workspace     make project (directory tree) showup in treemacs
+  ;;
+  (use-package treemacs-projectile
+    :ensure t
     )
-  "default rg args used in the `projectile` package.")
-
-(defun modi/advice-projectile-use-rg (mode)
-  "always use `rg' to establish project file list"
-  (mapconcat 'identity
-             (append '("\\rg") ; unalised version of rg
-                     modi/rg-arguments
-                     '("--null"   ; null-separated results
-                       "--files"  ; locate + print file names (don't search them)
-                       ))
-             " "))
-
-(use-package projectile
-  :ensure t
-  :init (progn (projectile-mode +1)
-               ;;(setq projectile-indexing-method 'native) -- want to use rg below
-               (setq projectile-project-compilation-dir "")
-               (setq projectile-enable-caching t)
-               ;; using rg to identify project source files:
-               ;; - honors .gitignore
-               ;; - fast, too!
-               (when (executable-find "rg")
-                 (progn
-                   (advice-add 'projectile-get-ext-command
-                               :override #'modi/advice-projectile-use-rg))))
-  :bind (:map projectile-mode-map
-              ("s-p" . projectile-command-map)
-              ("C-c p" . projectile-command-map)))
 #+end_src
 
 *** dev: language server protocol (LSP)
 
 #+begin_src elisp
-;; ----------------------------------------------------------------
-;; language-server-protocol
+  ;; ----------------------------------------------------------------
+  ;; language-server-protocol
 
-;; +format-with-lsp: provided by lsp-mode
-(defvar +format-with-lsp)
-(defvar lsp-clients-clangd-args)
+  ;; +format-with-lsp: provided by lsp-mode
+  (defvar +format-with-lsp)
+  (defvar lsp-clients-clangd-args)
 
-;; see:
-;;   https://emacs-lsp.github.io/lsp-mode
+  ;; see:
+  ;;   https://emacs-lsp.github.io/lsp-mode
 
-(defun disable-lsp-format ()
-  "Disable clang-driven formatting via lsp to prefer emacs-native formatting."
-  (setq +format-with-lsp nil))
+  (defun disable-lsp-format ()
+    "Disable clang-driven formatting via lsp to prefer emacs-native formatting."
+    (setq +format-with-lsp nil))
 
-(use-package lsp-mode
-  :config
-  (setq lsp-enable-indentation nil) ; disable clang indentation -- doesn't preserve newlines!
-  (setq lsp-enable-on-type-formatting nil)
-  (setq lsp-modeline-diagnostics-enable t)
-  (add-hook 'c++-mode-hook #'lsp-deferred)
-  (add-hook 'c++-mode-hook #'disable-lsp-format)
-  (setq lsp-clients-clangd-args '("-j=4" "-background-index" "-log=error"))
-  ;;(add-hook 'python-mode-hook #'lsp)
-)
+  (use-package lsp-mode
+    :hook   (lsp-mode . (lambda ()
+                          ;; from [[https://github.com/emacs-lsp/lsp-mode/issues/1532]] (mar 2020)
+                          (let ((lsp-keymap-prefix "C-c l"))  ; default s-l collides with windows key
+                            (lsp-enable-which-key-integration))))
+    :config (progn
+              ;; reminder: :config runs *after* package is loaded
+              (define-key lsp-mode-map (kbd "C-c l") lsp-command-map)
+
+              (setq lsp-enable-indentation nil) ; disable clang indentation -- doesn't preserve newlines!
+              (setq lsp-enable-on-type-formatting nil)
+              (setq lsp-headerline-breadcrumb-enable t)  ;; enable path-to-this-file headerline
+              (setq lsp-modeline-diagnostics-enable t)
+              (setq lsp-completion-provider :capf)
+              (setq lsp-completion-show-detail t) ;; rhs of completion popup
+              (setq lsp-completion-show-kind t)
+              ;; semgrep crashing incessantly, looks like can't resolve host semgrep.dev?
+              ;; *semgrep-ls::stderr* contains
+              ;;   TLS to non-TCP currenlty unsupported: host=semgrep.dev endp=(Unknown "name resolution failed")
+              (setq lsp-disabled-clients '(semgrep-ls))
+              ;;(setq lsp-signature-render-documentation t) ;; include documentation with signatures
+              (add-hook 'c++-mode-hook #'lsp-deferred)
+              (add-hook 'c++-mode-hook #'disable-lsp-format)
+              ;; additional clangd args:
+              ;;   --compile-commands-dir=path/to/compile_comamnds.json
+              ;; (ed: prefer better discoverable with build-specific symlink in git root for each project)
+              ;;   --fallback-style
+              ;; (ed: could use this instead of writing .clang-format)
+              ;;   --header-insertions=iwyu|never
+              ;;   --enable-config
+              ;; (ed: docs at
+              ;;   --pch-storage=disk|memory
+              (setq lsp-clients-clangd-args '("-j=4" "-background-index" "-log=error")))
+    ;;(add-hook 'python-mode-hook #'lsp)
+    )
+
+  ;; ----------------------------------------------------------------
+
+  ;; lsp-ui-sideline:  show info associated with symbols toward rhs of current line
+  ;;   lsp-ui-sideline-show-diagnostics
+  ;;   lsp-ui-sideline-show-hover
+  ;;   lsp-ui-sideline-show-code-actions
+  ;;   lsp-ui-sideline-update-mode
+  ;;   lsp-ui-sideline-delay
+  ;;
+  ;; lsp-ui-peek
+  ;;  examples
+  ;;   (define lsp-ui-mode-map [remap xref-find-definitions] #'lsp-ui-peek-find-definitions)
+  ;;   (define lsp-ui-mode-map [remap xref-find-references] #'lsp-ui-peek-find-references)
+  ;;   (lsp-ui-peek-jump-backward)
+  ;;   (lsp-ui-peek-jump-forward)
+  ;;   (lsp-ui-peek-find-workspace-symbol "pattern 0")
+  ;;   (lsp-ui-peek-find-custom 'base "$cquery/base")
+  ;;
+  ;;   lsp-ui-peek-enable
+  ;;   lsp-ui-peek-show-directory
+  ;;
+  ;; lsp-ui-doc
+  ;;   lsp-ui-doc-enable
+  ;;   lsp-ui-doc-position
+  ;;   lsp-ui-doc-delay
+  ;;   lsp-ui-doc-show-with-cursor
+  ;;   lsp-ui-doc-show-with-mouse
+  ;;
+  ;; lsp-ui-imenu
+  ;;   lsp-ui-imenu-kind-position
+  ;;   lsp-ui-imenu-buffer-position
+  ;;   lsp-ui-imenu-window-width
+  ;;   lsp-ui-imenu-window-fix-width
+  ;;   lsp-ui-imenu--custome-mode-line-format
+  ;;   lsp-ui-imenu-auto-refresh
+  ;;
+  (use-package lsp-ui
+    :ensure t
+    :config
+    (setq lsp-ui-sideline-show-diagnostics t)
+    (setq lsp-ui-doc-enable t)    ;; hover dialogs
+    (setq lsp-ui-doc-show-with-cursor t)
+    )
+
+#+end_src
+
+*** dev: lsp+ivy integration 
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; LSP ivy integration
+
+  ;; M-x lsp-ivy-worskpace-symbol
+  ;; M-x lsp-ivy-global-workspace-symbol
+
+  (use-package lsp-ivy
+    :ensure t
+    :bind (:map global-map
+                ("M-g s" . lsp-ivy-workspace-symbol)
+                ("M-g S" . lsp-ivy-global-workspace-symbol))
+    )
 #+end_src
 
 *** dev: git integration
 
 #+begin_src elisp
-;; git integration
-;;  C-x M-g
-;;
-(use-package magit
-         :ensure t
-         :init (progn (bind-key "C-x M-g j" 'magit-status)))
+  ;; ----------------------------------------------------------------
+  ;; git integration
+  ;;  C-x M-g j   magit status buffer for current repo
+  ;;
+  ;; in status buffer:
+  ;;   d change diff parameters
+  ;;      -w  suppress whitespace-only diffs
+  ;;      C-x extended menu
+  ;;           C-s save settings for future sessions
+  ;;
+  (use-package magit
+    :ensure t
+    :init (progn (bind-key "C-x M-g j" 'magit-status)))
 #+end_src
 
 *** dev: nix mode
@@ -585,7 +879,7 @@ Syntax highlighting in yaml files
 
         ("org-howto-static"
          :base-directory "~/proj/org-howto"
-         :base-extension "md\\|css\\|html\\|js\\|svg\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
+         :base-extension "md\\|css\\|html\\|js\\|svg\\|ico\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
          :publishing-directory "~/proj/public_html/org-howto"
          :recursive t
          :publishing-function org-publish-attachment
@@ -608,7 +902,7 @@ Syntax highlighting in yaml files
 
         ("org-private-static"
          :base-directory "~/proj/org-private"
-         :base-extension "md\\|css\\|html\\|js\\|svg\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
+         :base-extension "md\\|css\\|html\\|js\\|svg\\|ico\\|png\\|jpg\\|gif\\|pdf\\|mp3\\|ogg\\|swf"
          :publishing-directory "~/proj/private_html/org-private"
          :recursive t
          :publishing-function org-publish-attachment
@@ -671,21 +965,35 @@ For literate programming -- execute code blocks, written in various languages, e
   (org-babel-do-load-languages
    'org-babel-load-languages
    '(
-     (ditaa .t) ; "diagrams throug ascii art"
+     (C . t)    ; C,C++,D [[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-C.html]]
+     (ditaa .t) ; "diagrams through ascii art"
      (dot . t)  ; graphviz [[https://orgmode.org/worg/org-contrib/babel/languages/ob-doc-dot.html]] see also graphviz-dot-mode
      ))
 #+end_src
 
-For =ditaa=, need some paths.  Nix makes these obscure, which makes fixing the hacky setup here inconvenient.
+For =ditaa=, need some paths.  Nix makes these obscure, need to dig out the parts we want
 
 #+begin_src elisp
-;; extracted from
-;;   cat $(which ditaa)
-;; 
-;;
-(setq org-babel-ditaa-java-cmd "/nix/store/chcmn5mpj3l5jzxfs2krqximz3276i8v-openjdk-19.0.2+7/bin/java")
-(setq org-ditaa-jar-path "/nix/store/gmfa1zjmn0gjgl04kd5fvs1fj49x6dj4-ditaa-0.11.0/lib/ditaa.jar")
-;; (setq org-ditaa-eps-jar-path "path/to/related/jar") ;; not using, but if so would need:
+  ;; extracted from command like
+  ;;   cat $(which ditaa) | sed -n -e '/^exec/s: -jar .*$::p' | sed -e 's:^exec ::'
+  ;; expecting result like
+  ;;  /nix/store/6g5q62wafkpg0p3w854vc9yxy9bsnwi5-openjdk-19.0.2+7/bin/java
+  ;;
+  ;; the /usr/bin paths + /nix/store/.*ditaa.jar exprs for shmecurity
+  ;;
+  (setq org-babel-ditaa-java-cmd
+        (shell-command-to-string "/usr/bin/cat $(which ditaa) | /usr/bin/sed -n -e '/^exec/s: -jar .*\$::p' | /usr/bin/sed -e 's:^exec ::' | /usr/bin/tr -d '\n'"))
+
+  ;; extracted from command like
+  ;;   cat $(which ditaa) | grep ' -jar ' | sed -e 's:^exec.* -jar "::' -e 's:" "\$@"::'
+  ;; expecting result like
+  ;;   /nix/store/in2hf1xcxr1i4rijw0g423kawr3624pv-ditaa-0.11.0/lib/ditaa.jar
+  ;;
+  ;; the /usr/bin paths + /nix/store/.*ditaa.jar exprs for shmecurity
+  ;;
+  (setq org-ditaa-jar-path
+        (shell-command-to-string "/usr/bin/cat $(which ditaa) | /usr/bin/grep ' -jar ' | /usr/bin/sed -e 's:^exec.* -jar \"::' -e 's:\" \"\\$@\"::' | /usr/bin/grep '^/nix/store/.*ditaa.jar' | /usr/bin/tr -d '\n'"))
+  ;; (setq org-ditaa-eps-jar-path "path/to/related/jar") ;; not using, but if so would need it
 #+end_src
 
 ** email
@@ -747,10 +1055,79 @@ Note: =smtpmail= also requires credentials in =~/.authinfo=:
 machine smtp.gmail.com login rconybeare@gmail.com port 587 password somegoogleapppassword
 #+end_example
 
+** eye candy: theme selection
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; theme selection
+
+  (load-theme 'misterioso t)
+#+end_src
+
+*** eye candy: default font
+
+#+begin_src elisp
+  ;; ----------------------------------------------------------------
+  ;; default font
+
+  ;; note:
+  ;;   C-x C-+             increase buffer text size
+  ;;   C-x C-=             something buffer text size
+  ;;   C-x C--             decrease buffer text size
+  ;;   C-x C-0             restore default buffer text size
+  ;;   M-x describe-font   display font canonical name + stats in a new buffer
+  ;;
+
+  ;; to install inconsolata on ubuntu:
+  ;;   $ sudo apt-get -y install fonts-inconsolata
+  ;; for nix,  can use package
+  ;;   nixpkgs.inconsolata-lgc
+
+  (add-to-list
+   'default-frame-alist
+   '(font . "-PfEd-Inconsolata-medium-normal-normal-*-14-*-*-*-m-0-iso10646-1"))
+#+end_src
+
+*** eye candy: initial window height
+
+#+begin_src elisp
+(defvar target-frame-width (+ 1 (* 2 135)))
+
+(defun set-frame-size-from-screen-resolution ()
+  "Infer suitable default frame size.
+Reminder: no such thing as .Xresources under WSL."
+  (interactive)
+  (if (display-graphic-p)
+      (progn
+        (let* ((horizontal-room (/ (x-display-pixel-width)
+                                   (frame-char-width)))
+               (using-width (min target-frame-width
+                                 horizontal-room)))
+          (set-frame-width (selected-frame)
+                           using-width)
+          ;;(add-to-list 'default-frame-alist (cons 'width using-width))
+          )
+        ;; subtracting 200 pixels of vertical space
+        (let* ((vertical-padding 100)
+               (vertical-room (/ (- (x-display-pixel-height)
+                                    vertical-padding)
+                                 (frame-char-height))))
+          (set-frame-height (selected-frame)
+                            vertical-room)
+          ;;(add-to-list 'default-frame-alist (cons 'height vertical-room))
+          ))))
+
+(set-frame-size-from-screen-resolution)
+#+end_src
+
 ** emacsclient
+
+=EDITOR=emacsclient= to adopt running emacs session when unix wants something edited.
+For example when running =git commit= from shell.
 
 #+begin_src elisp
   ;; + set EDITOR=emacsclient in shell
 
   (server-start)
 #+end_src
+
