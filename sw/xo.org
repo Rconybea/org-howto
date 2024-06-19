@@ -33,7 +33,8 @@
   - [[https://github.com/rconybea/xo-pywebsock][xo-pywebsock]] in-memory http server; can expose entirely-native publishing pipeline via websockets.
   - [[https://github.com/rconybea/xo-pywebutil][xo-pywebutil]] lo-level abstractions for http: endpoints, attribute lists.
   - [[https://github.com/rconybea/xo-pykalmanfilter][xo-pykalmanfilter]] linear kalman filter with simulation support.
-  - [[https://github.com/rconybea/xo-pydistribution][xo-pydistribution]] probability distributions e.g. Kolmogorov Smirnov
+  - [[https://github.com/rconybea/xo-pymatrix][xo-pymatrix]] matrix algorithms [wip]
+  - [[ttps://github.com/rconybea/xo-pydistribution][xo-pydistribution]] probability distributions e.g. Kolmogorov Smirnov
   - [[https://github.com/rconybea/xo-pyprocess][xo-pyprocess]] stochastic processes with simulation focus.
   - [[https://github.com/rconybea/xo-pyreactor][xo-pyreactor]] complex event processors + polling reactor.
   - [[https://github.com/rconybea/xo-pyprintjson][xo-pyprintjson]] plugin json printing for xo c++ classes.
@@ -59,12 +60,13 @@
   data structures
   - [[https://github.com/rconybea/xo-ordinaltree][xo-ordinaltree]] header-only. fast in-memory B+ tree, red-black tree w/ ordinal statistics.
 
-  dimension [wip]
+  quantitative
+  - [[https://github.com/rconybea/xo-matrix][xo-matrix]] header-only.  specialized matrix algorithms with some vectorization [wip]
   - [[https://github.com/rconybea/xo-unit][xo-unit]] header-only.  no-alloc constexpr exact unit conversions with some fractional-dimension support.
   - [[https://github.com/rconybea/xo-ratio][xo-ratio]] header-only.  no-alloc constexpr exact ratio arithmetic.
-  - [[https://github.com/rconybea/xo-flatstring][xo-flatstring]] header-only. no-alloc plain-old-data constexpr string implementation
 
   general-purpose
+  - [[https://github.com/rconybea/xo-flatstring][xo-flatstring]] header-only. no-alloc plain-old-data constexpr string implementation
   - [[https://github.com/rconybea/xo-callback][xo-callback]] header-only. reentrant callback set
   - [[https://github.com/rconybea/xo-printjson][xo-printjson]] json printer with plugin support.
   - [[https://github.com/rconybea/reflect][xo-reflect]] reflection/introspection library
@@ -94,16 +96,16 @@
   #+header: :exports results
   #+begin_src ditaa :file img/xo-py-overview.png
 
-       +----------+-----------+-----------+----------+
-       |          |           | pyprocess | pykalman |
-       |          |           |           |  -filter |
-       | pydistri | pywebsock +-----------+----------+
-       | -bution  |           |        pyreactor     |
-       |          |           +-------------+        |
-       |          |           | pyprintjson |        |
-       |          +-----------+-------------+--------+
-       |          | pywebutil |       pyreflect      |
-       +----------+-----------+----------------------+
+       +----------+----------+-----------+-----------+----------+
+       |          |          |           | pyprocess | pykalman |
+       |          |          |           |           |  -filter |
+       | pymatrix | pydistri | pywebsock +-----------+----------+
+       |          | -bution  |           |        pyreactor     |
+       |          |          |           +-------------+        |
+       |          |          |           | pyprintjson |        |
+       |          |          +-----------+-------------+--------+
+       |          |          | pywebutil |       pyreflect      |
+       +----------+----------+-----------+----------------------+
 
   #+end_src
 
@@ -116,24 +118,50 @@
   #+header: :exports results
   #+begin_src ditaa :file img/xo-overview.png
 
-       +--------+---------+-----------+---------+-----------+------------+------------+
-       |        |         |  process  | kalman  | simulator |            |            |
-       |        |         |           | -filter |           |            |            |
-       | distri | websock +-----------+---------+-----------+            |            |
-       |-bution |         |                                 |            |            |
-       |        |         +---------+      reactor          |            |    unit    |
-       |        |         |printjson|                       |            |            |
-       |        +---------+---------+-+-----------+---------+ statistics |            |
-       |        | webutil |  reflect  |           |         |            |            |
-       +--------+---------+-+---------+           | ordinal |            +-------+    |
-       |      refcnt        |         |  callback |  tree   |            | ratio |    |
-       |        +-----------+ subsys  |           |         |            +-------+----+
-       |        | indentlog |         |           |         |            | flatstring |
-       +--------+-----------+---------+-----------+---------+------------+------------+
-       |                         xo cmake modules                                     |
-       +------------------------------------------------------------------------------+
+       +--------+--------+---------+-----------+---------+-----------+------------+------------+
+       |        |        |         |  process  | kalman  | simulator |            |            |
+       |        |        |         |           | -filter |           |            |            |
+       | matrix | distri | websock +-----------+---------+-----------+            |            |
+       |        |-bution |         |                                 |            |            |
+       |        |        |         +---------+      reactor          |            |    unit    |
+       |        |        |         |printjson|                       |            |            |
+       |        |        +---------+---------+-+-----------+---------+ statistics |            |
+       |        |        | webutil |  reflect  |           |         |            |            |
+       +--------+--------+---------+-+---------+           | ordinal |            +-------+    |
+       |           refcnt            |         |  callback |  tree   |            | ratio |    |
+       |                 +-----------+ subsys  |           |         |            +-------+----+
+       |                 | indentlog |         |           |         |            | flatstring |
+       +-----------------+-----------+---------+-----------+---------+------------+------------+
+       |                                  xo cmake modules                                     |
+       +---------------------------------------------------------------------------------------+
 
   #+end_src
 
   #+RESULTS: xo-overview
   [[file:img/xo-overview.png]]
+
+* Size
+
+  (per =cloc=;  excludes comments.  Sizes as of 10jun2024)
+
+  | subsystem       | cmake | .hpp | .cpp |
+  |-----------------+-------+------+------|
+  | xo-websock      |    34 |  186 | 1418 |
+  | xo-webutil      |    27 |   77 |   56 |
+  | xo-kalmanfilter |    47 |  552 |  904 |
+  | xo-process      |    34 |  645 |  163 |
+  | xo-simulator    |    31 |  186 |  392 |
+  | xo-reactor      |    39 | 1110 |  261 |
+  | xo-distribution |    24 |  717 |      |
+  | xo-ordinaltree  |    24 | 3962 |      |
+  | xo-statistics   |    22 |  166 |      |
+  | xo-matrix       |    29 | 1266 |      |
+  | xo-unit         |    49 | 1972 |      |
+  | xo-ratio        |    36 |  418 |      |
+  | xo-reflect      |    54 |  891 |  289 |
+  | xo-refcnt       |    36 |  306 |  130 |
+  | xo-indentlog    |    35 | 1632 |      |
+  | xo-flatstring   |    34 |  582 |      |
+  | xo-callback     |    25 |  180 |      |
+  | xo-subsys       |    27 |  153 |      |
+  | xo-cmake        |  1164 |      |      |
