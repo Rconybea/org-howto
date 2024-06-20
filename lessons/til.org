@@ -873,7 +873,7 @@ Then run python like
 (my =PYTHONPATH= rather long, contains a plethora of nix directories)
 
 Then from python:
-#+being_src python
+#+begin_src python
   from xo_pyreflect import *
   from xo_pyexpression import *
   from xo_pyjit import *
@@ -965,7 +965,3 @@ In our jit:
       } /*intern_symbol*/
   };
 #+end_src
-
-*** Problem
-
-- Following same strategy as kaleidoscope tutorial,  can adopt known C functions as primitives,
