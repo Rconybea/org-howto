@@ -50,11 +50,9 @@ We must rehearse the C-language distinction between function types and pointer-t
 
 1. I'm following Kaleidoscope's advice for satisfying LLVM IR's single-assignment requirement:
    function arguments are copied to the stack via =IRBuilder::CreateAlloca()=.
-
-   Stack traffic is subsequently optimized away
-
+   Stack traffic is subsequently optimized away by an llvm transform.
 2. To represent types, *xo-jit* relies on sister library [[https://github.com/Rconybea/reflect][xo-reflect]].
-   *xo-reflect* leverages c++ template specialization (to the extent possible)
+3. *xo-reflect* leverages c++ template specialization (where possible)
    to automate type construction.
 
 * LLVM Stack Allocation
@@ -62,11 +60,8 @@ We must rehearse the C-language distinction between function types and pointer-t
 For our variables,  this involves several steps:
 
 1. Creating a stack allocation, *alloca*
-
 2. Storing a value to the stack
-
 3. Loading a value from the stack
-
 4. Use optimizer pass to undo stack use
 
 ** Allocating Stack Space for a Value

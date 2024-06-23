@@ -1,0 +1,101 @@
+#+title: [8jun2024] gcc: getting builtin defines
+# ----------------------------------------------------------------
+#+tags: @c++ @gcc @preprocessor
+# ----------------------------------------------------------------
+#+description: List available C preprocessor symbols with gcc
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: c++ gcc preprocessor
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* Problem
+
+Want to know the set of builtin =#defines= provided by compiler,
+as a function of command line arguments.
+
+My use case was figuring out which symbols for vector instructions
+got picked up with =-march=native= on my dev host.
+
+* Solution
+
+- stumbled on this stack overflow question
+  https://stackoverflow.com/questions/28939652/how-to-detect-sse-sse2-avx-avx2-avx-512-avx-128-fma-kcvi-availability-at-compile
+
+- turns out to be an easy one-liner
+
+  #+begin_src bash
+    gcc -dM -E - < /dev/null | sort
+  #+end_src
+
+  with output like
+
+  #+begin_example
+    #define _FORTIFY_SOURCE 3
+    #define _LP64 1
+    #define _STDC_PREDEF_H 1
+    #define __ATOMIC_ACQUIRE 2
+    #define __ATOMIC_ACQ_REL 4
+    ...
+  #+end_example
+
+  Here:
+
+  - =-E= tells compiler to emit preprocessor output
+  - =-dM= tells compiler to produce defines instead of preprocesed source code
+  - =-= as last argument tells compiler to compile input from stdin.
+
+- to look at say SSE/AVX related instructions:
+
+  (using gcc 13.2 here)
+
+  #+begin_src bash
+    gcc -dM -E - < /dev/null | egrep "SSE|AVX" | sort
+  #+end_src
+
+  #+begin_example
+    #define __MMX_WITH_SSE__ 1
+    #define __SSE2_MATH__ 1
+    #define __SSE2__ 1
+    #define __SSE_MATH__ 1
+    #define __SSE__ 1
+  #+end_example
+
+  but with =-mavx512f=:
+
+  #+begin_src bash
+    gcc -mavx512f -dM -E - < /dev/null | egrep "SSE|AVX" | sort
+  #+end_src
+
+  with output:
+
+  #+begin_example
+    #define __AVX2__ 1
+    #define __AVX512F__ 1
+    #define __AVX__ 1
+    #define __MMX_WITH_SSE__ 1
+    #define __SSE2_MATH__ 1
+    #define __SSE2__ 1
+    #define __SSE3__ 1
+    #define __SSE4_1__ 1
+    #define __SSE4_2__ 1
+    #define __SSE_MATH__ 1
+    #define __SSE__ 1
+    #define __SSSE3__ 1
+  #+end_example

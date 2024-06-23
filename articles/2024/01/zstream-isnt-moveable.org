@@ -1,0 +1,83 @@
+#+title: [2024] zlib z_stream isn't moveable
+# ----------------------------------------------------------------
+#+tags: @c++ @zlib @zstreambuf
+# ----------------------------------------------------------------
+#+description: Zlib's z_stream isn't moveable
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: c++ gcc preprocessor
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* TL;DR
+
+Be aware that =zlib='s =z_stream= struct cannot be moved.
+Presume it contains internal pointers to itself.
+
+* Setup
+
+- Using =zstreambuf= (provided as byproduct of my [[https://github.com/Rconybea/cmake-examples][cmake-examples]] project)
+  I ran into errors after move assignment.
+- Making =zstreambuf.open()= work with a =zstreambuf= that's already been used for i/o.
+- Attempted to cleanup state within =zstreambuf.close()=,  using move assignment on
+  =buffered_inflate_zstream= and =buffered_deflate_zstream=.
+
+* Problem + Diagnosis
+
+- Unit testing revealed that uncompress failed after second =zstreambuf.open()=.
+
+- It turns out that although zlib's =z_stream= struct is fully exposed
+  (to work with zlib, application code should declare a variable with type =z_stream=),
+  the =z_stream= struct can't be moved to another location.
+  Presumably at least one of (=::deflateInit2()=, =::inflateInit2()=) does some
+  address-dependent computation involving one or more =z_stream= members.
+
+* Solution
+
+- Replace =z_stream= member with a pointer:
+
+  Instead of:
+
+  #+begin_src C++
+    // compression/include/compression/base_zstream.hpp
+
+    #include <zlib.h>
+
+    struct base_zstream {
+        // ...omitted...
+
+        z_stream zstream_;
+    };
+  #+end_src
+
+  write:
+
+  #+begin_src C++
+    // compression/include/compression/base_zstream.hpp
+
+    #include <utility>
+
+    struct base_zstream {
+        // ...omitted...
+
+        std::unique_ptr<z_stream> p_native_zs_;
+    };
+  #+end_src
+
+  Then implement =::swap()= etc by swapping pointers.

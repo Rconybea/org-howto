@@ -716,141 +716,17 @@ applies to the /depended-on/ library (3rd argument),  not the /depending/ librar
    This requires streambuf author to implement at least a restricted version of =streambuf::seekoff()=,
    which muddies the waters.
 
+(ed: switching to article-based format)
+
 * zlib
 
-** zstreambuf errors after move assignment
-
-*** Setup
-
-- Making =zstreambuf.open()= work with a =zstreambuf= that's already been used for i/o.
-- Attempted to cleanup state within =zstreambuf.close()=,  using move assignment on
-  =buffered_inflate_zstream= and =buffered_deflate_zstream=.
-
-*** Problem + Diagnosis
-
-- Unit testing revealed that uncompress failed after second =zstreambuf.open()=.
-
-- It turns out that although zlib's =z_stream= struct is fully exposed
-  (to work with zlib, application code should declare a variable with type =z_stream=),
-  the =z_stream= struct can't be moved to another location.
-  Presumably at least one of (=::deflateInit2()=, =::inflateInit2()=) does some
-  address-dependent computation involving one or more =z_stream= members.
-
-*** Solution
-
-- Replace =z_stream= member with a pointer:
-
-  Instead of:
-
-  #+begin_src C++
-    // compression/include/compression/base_zstream.hpp
-
-    #include <zlib.h>
-
-    struct base_zstream {
-        // ...omitted...
-
-        z_stream zstream_;
-    };
-  #+end_src
-
-  write:
-
-  #+begin_src C++
-    // compression/include/compression/base_zstream.hpp
-
-    #include <utility>
-
-    struct base_zstream {
-        // ...omitted...
-
-        std::unique_ptr<z_stream> p_native_zs_;
-    };
-  #+end_src
-
-  Then implement =::swap()= etc by swapping pointers.
+- (Jan? 2024) [[file:../articles/2024/01/zstream-isnt-moveable.org][zlib z_stream cannot be moved]]
 
 * gcc
 
-** how to get built-in defines (8jun2024)
-
-*** Problem
-
-- want to know the set of builtin =#defines= provided by compiler,
-  as a function of command line arguments.
-
-*** Solution
-
-- stumbled on this stack overflow question
-  https://stackoverflow.com/questions/28939652/how-to-detect-sse-sse2-avx-avx2-avx-512-avx-128-fma-kcvi-availability-at-compile
-
-- turns out to be an easy one-liner
-
-  #+begin_src bash
-    gcc -dM -E - < /dev/null | sort
-  #+end_src
-
-  with output like
-
-  #+begin_example
-    #define _FORTIFY_SOURCE 3
-    #define _LP64 1
-    #define _STDC_PREDEF_H 1
-    #define __ATOMIC_ACQUIRE 2
-    #define __ATOMIC_ACQ_REL 4
-    ...
-  #+end_example
-
-  Here:
-
-  - =-E= tells compiler to emit preprocessor output
-  - =-dM= tells compiler to produce defines instead of preprocesed source code
-  - =-= as last argument tells compiler to compile input from stdin.
-
-- to look at say SSE/AVX related instructions:
-
-  (using gcc 13.2 here)
-
-  #+begin_src bash
-    gcc -dM -E - < /dev/null | egrep "SSE|AVX" | sort
-  #+end_src
-
-  #+begin_example
-    #define __MMX_WITH_SSE__ 1
-    #define __SSE2_MATH__ 1
-    #define __SSE2__ 1
-    #define __SSE_MATH__ 1
-    #define __SSE__ 1
-  #+end_example
-
-  but with =-mavx512f=:
-
-  #+begin_src bash
-    gcc -mavx512f -dM -E - < /dev/null | egrep "SSE|AVX" | sort
-  #+end_src
-
-  with output:
-
-  #+begin_example
-    #define __AVX2__ 1
-    #define __AVX512F__ 1
-    #define __AVX__ 1
-    #define __MMX_WITH_SSE__ 1
-    #define __SSE2_MATH__ 1
-    #define __SSE2__ 1
-    #define __SSE3__ 1
-    #define __SSE4_1__ 1
-    #define __SSE4_2__ 1
-    #define __SSE_MATH__ 1
-    #define __SSE__ 1
-    #define __SSSE3__ 1
-  #+end_example
+- (June 2024) [[file:../articles/2024/06/gcc-builtin-defines.org][get builtin preprocessor defines from gcc]]
 
 * llvm
-
-** Articles
-
-(ed: switching to article-based format)
 
 - (June 2024) [[file:../articles/2024/06/injecting-symbols-into-llvm-jit.org][injecting symbols into llvm jit]]
 - (June 2024) [[file:../articles/2024/06/llvm-cpp-function-types.org][alloca and function pointers]]
