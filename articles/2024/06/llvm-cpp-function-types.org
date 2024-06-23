@@ -1,0 +1,373 @@
+#+title: [23jun2024] llvm::FunctionType and IRBuilder::CreateAlloc
+# ----------------------------------------------------------------
+#+tags: @c++ @llvm @jit @beyond-kaleidoscope
+# ----------------------------------------------------------------
+#+description: lessons learned while building cooperating c++ libraries using nix|cmake|pybind11|eigen amongst others
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: c++ llvm git beyond-kaleidoscope
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* Introduction
+
+I have a hobby/learning project [[https://github.com/Rconybea/xo-jit][xo-jit]],  jumping off from the content in the LLVM Kaleidoscope tutorial.
+*xo-jit* supports a recognizable version of typed lambda calculus. [fn:1]
+
+It's reached the point where built-in machine-supported atomic types
+(=int32=, =uint64=, =float=, =double=, ..) work,
+but ran into trouble introducing support for function types.
+
+Example:
+#+begin_example
+define twice(f :: int(int), x :: int) { f(f(x)) }
+#+end_example
+
+[fn:1] Using gcc 13.2, LLVM 18.1.5, building on ubuntu (really WSL2-on-windows), with nix supplying dependencies
+
+* TL;DR
+
+We must rehearse the C-language distinction between function types and pointer-to-function types.
+=llvm::IRBuilder::CreateAlloc= hangs if asked to allocate space for an =llvm::FunctionType=.
+
+* Context
+
+1. I'm following Kaleidoscope's advice for satisfying LLVM IR's single-assignment requirement:
+   function arguments are copied to the stack via =IRBuilder::CreateAlloca()=.
+
+   Stack traffic is subsequently optimized away
+
+2. To represent types, *xo-jit* relies on sister library [[https://github.com/Rconybea/reflect][xo-reflect]].
+   *xo-reflect* leverages c++ template specialization (to the extent possible)
+   to automate type construction.
+
+* LLVM Stack Allocation
+
+For our variables,  this involves several steps:
+
+1. Creating a stack allocation, *alloca*
+
+2. Storing a value to the stack
+
+3. Loading a value from the stack
+
+4. Use optimizer pass to undo stack use
+
+** Allocating Stack Space for a Value
+
+*xo-jit* code for creating a stack allocation uses =IRBuilder::CreateAlloc=.
+Excerpt from =MachPipeline= ([[https://github.com/Rconybea/xo-jit/blob/main/include/xo/jit/MachPipeline.hpp][.hpp]] [[https://github.com/Rconybea/xo-jit/blob/main/src/jit/MachPipeline.cpp][.cpp]]):
+
+#+begin_src c++
+  llvm::AllocaInst *
+  MachPipeline::create_entry_block_alloca(llvm::Function * llvm_fn,
+                                          const std::string & var_name,
+                                          TypeDescr var_type)
+  {
+      constexpr bool c_debug_flag = true;
+      using xo::scope;
+
+      scope log(XO_DEBUG(c_debug_flag),
+                xtag("llvm_fn", (void*)llvm_fn),
+                xtag("var_name", var_name),
+                xtag("var_type", var_type->short_name()));
+
+      llvm::IRBuilder<> tmp_ir_builder(&llvm_fn->getEntryBlock(),
+                                       llvm_fn->getEntryBlock().begin());
+
+      llvm::Type * llvm_var_type = td_to_llvm_type(llvm_cx_.borrow(),
+                                                   var_type);
+
+      log && log(xtag("llvm_var_type", (void*)llvm_var_type));
+
+      if (!llvm_var_type)
+          return nullptr;
+
+      llvm::AllocaInst * retval = tmp_ir_builder.CreateAlloca(llvm_var_type,
+                                                              nullptr,
+                                                              var_name);
+      log && log(xtag("alloca", (void*)retval));
+
+      return retval;
+  } /*create_entry_block_alloca*/
+#+end_src
+
+The helper function =td_to_llvm_type()= constructs an =llvm::Type= corresponding
+to an *xo-reflect* =TypeDescr=:
+
+#+begin_src c++
+  llvm::Type *
+  td_to_llvm_type(xo::ref::brw<LlvmContext> llvm_cx, TypeDescr td);
+
+  /** obtain llvm representation for a function type with the same signature as
+   ,*  that represented by @p fn_td
+   ,**/
+  llvm::FunctionType *
+  function_td_to_llvm_type(xo::ref::brw<LlvmContext> llvm_cx,
+                           TypeDescr fn_td)
+  {
+      int n_fn_arg = fn_td->n_fn_arg();
+
+      std::vector<llvm::Type *> llvm_argtype_v;
+      llvm_argtype_v.reserve(n_fn_arg);
+
+      /** check function args are all known **/
+      for (int i = 0; i < n_fn_arg; ++i) {
+          TypeDescr arg_td = fn_td->fn_arg(i);
+
+          llvm::Type * llvm_argtype = td_to_llvm_type(llvm_cx, arg_td);
+
+          if (!llvm_argtype)
+              return nullptr;
+
+          llvm_argtype_v.push_back(llvm_argtype);
+      }
+
+      TypeDescr retval_td = fn_td->fn_retval();
+      llvm::Type * llvm_retval = td_to_llvm_type(llvm_cx, retval_td);
+
+      if (!llvm_retval)
+          return nullptr;
+
+      auto * llvm_fn_type = llvm::FunctionType::get(llvm_retval,
+                                                    llvm_argtype_v,
+                                                    false /*!varargs*/);
+
+      return llvm_fn_type;
+  }
+
+  llvm::Type *
+  td_to_llvm_type(xo::ref::brw<LlvmContext> llvm_cx, TypeDescr td) {
+      auto & llvm_cx_ref = llvm_cx->llvm_cx_ref();
+
+      if (td->is_function()) {
+          return function_td_to_llvm_type(llvm_cx, td);
+      } else if (Reflect::is_native<bool>(td)) {
+          return llvm::Type::getInt1Ty(llvm_cx_ref);
+      } else if (Reflect::is_native<char>(td)) {
+          return llvm::Type::getInt8Ty(llvm_cx_ref);
+      } else if (Reflect::is_native<short>(td)) {
+          return llvm::Type::getInt16Ty(llvm_cx_ref);
+      } else if (Reflect::is_native<int>(td)) {
+          return llvm::Type::getInt32Ty(llvm_cx_ref);
+      } else if (Reflect::is_native<long>(td)) {
+          return llvm::Type::getInt64Ty(llvm_cx_ref);
+      } else if (Reflect::is_native<float>(td)) {
+          return llvm::Type::getFloatTy(llvm_cx_ref);
+      } else if (Reflect::is_native<double>(td)) {
+          return llvm::Type::getDoubleTy(llvm_cx_ref);
+      } else {
+          cerr << "td_to_llvm_type: no llvm type available for T"
+               << xtag("T", td->short_name())
+               << endl;
+          return nullptr;
+      }
+  }
+#+end_src
+
+** Storing a Value to the Stack
+
+Once we have a stack allocation,   writing a value is simple
+
+#+begin_src c++
+  llvm::Function *
+  MachPipeline::codegen_lambda_defn(ref::brw<Lambda> lambda,
+                                    llvm::IRBuilder<> & ir_builder)
+  {
+      auto * llvm_fn = llvm_module_->getFunction(lambda->name());
+
+      for (auto & arg : llvm_fn->args()) {
+          std::string arg_name = std::string(arg.getName());
+
+          llvm::AllocaInst * alloca
+              = create_entry_block_alloca(llvm_fn,
+                                          arg_name,
+                                          lambda->fn_args(i));
+
+          ir_builder.CreateStore(&arg, alloca);
+      }
+
+      // codegen continues..
+  }
+#+end_src
+
+** Reading a Value from the Stack
+
+Reading from stack allocation is also straightforward:
+
+#+begin_src c++
+  llvm::Value *
+  MachPipeline::codegen_variable(ref::brw<Variable> var,
+                                 llvm::IRBuilder<> & ir_builder)
+  {
+      if (env_stack_.empty()) {
+          cerr << "MachPipeline::codegen_variable: expected non-empty environment stack"
+               << xtag("x", var->name())
+               << endl;
+
+          return nullptr;
+      }
+
+      llvm::AllocaInst * alloca = env_stack_.top().lookup_var(var->name());
+
+      if (!alloca)
+          return nullptr;
+
+      /* code to load value from stack */
+      return ir_builder.CreateLoad(alloca->getAllocatedType(),
+                                   alloca,
+                                   var->name().c_str());
+  } /*codegen_variable*/
+#+end_src
+
+** Eliminating Stack Variables during Optimization
+
+Excerpt from =IrPipeline= ([[https://github.com/Rconybea/xo-jit/blob/main/include/xo/jit/IrPipeline.hpp][.hpp]] [[https://github.com/Rconybea/xo-jit/blob/main/src/jit/IrPipeline.cpp][.cpp]])
+
+#+begin_src c++
+  IrPipeline::IrPipeline(ref::rp<LlvmContext> llvm_cx)
+  {
+      //...
+
+      this->llvm_fpmgr_ = make_unique<llvm::FunctionPassManager>();
+
+      // ...
+
+      /** transform passes **/
+      this->llvm_fpmgr_->addPass(llvm::InstCombinePass());
+
+      /* NOTE: llvm 19 adds mem2reg transform here */
+      this->llvm_fpmgr_->addPass(llvm::PromotePass());
+
+      this->llvm_fpmgr_->addPass(llvm::ReassociatePass());
+      this->llvm_fpmgr_->addPass(llvm::GVNPass());
+      this->llvm_fpmgr_->addPass(llvm::SimplifyCFGPass());
+
+      // ...
+  } /*ctor*/
+#+end_src
+
+* Problem + Diagnosis
+
+When we try to invoke =MachPipeline::codegen_lambda_defn()= for a =xo::expr::Lambda=
+that has a function type argument, llvm hangs.
+
+Session:
+
+#+begin_example
+  bash-5.2$ gdb ./example/ex2_jit/xo_jit_ex2
+  GNU gdb (GDB) 14.2
+  Copyright (C) 2023 Free Software Foundation, Inc.
+  License GPLv3+: GNU GPL version 3 or later <http://gnu.org/licenses/gpl.html>
+  This is free software: you are free to change and redistribute it.
+  There is NO WARRANTY, to the extent permitted by law.
+  Type "show copying" and "show warranty" for details.
+  This GDB was configured as "x86_64-unknown-linux-gnu".
+  Type "show configuration" for configuration details.
+  For bug reporting instructions, please see:
+  <https://www.gnu.org/software/gdb/bugs/>.
+  Find the GDB manual and other documentation resources online at:
+      <http://www.gnu.org/software/gdb/documentation/>.
+
+  For help, type "help".
+  Type "apropos word" to search for commands related to "word"...
+  Reading symbols from ./example/ex2_jit/xo_jit_ex2...
+  (No debugging symbols found in ./example/ex2_jit/xo_jit_ex2)
+  (gdb) run
+  Starting program: /home/roland/proj/xo/xo-jit/.build/example/ex2_jit/xo_jit_ex2
+  [Thread debugging using libthread_db enabled]
+  Using host libthread_db library "/nix/store/apab5i73dqa09wx0q27b6fbhd1r18ihl-glibc-2.39-31/lib/libthread_db.so.1".
+  22:00:41.933724 +(0) main                                                       [ex2_jit.cpp:65]
+  ex1 llvm_ircode:
+  declare double @sqrt(double)
+
+  22:00:41.933983   +(1) MachPipeline::codegen_lambda_decl  :lambda-name callit   [MachPipeline.cpp:460]
+                      llvm formal param names :i 0 :param <Variable :name f :type "double (*)(double)">
+                      llvm formal param names :i 1 :param <Variable :name x :type double>
+  22:00:41.934072   -(1) MachPipeline::codegen_lambda_decl
+  ex1 llvm_ircode:
+  declare double @callit(double (double), double)
+
+  22:00:41.934121   +(1) MachPipeline::create_entry_block_alloca  :llvm_fn 0x60d000004628 :var_name f :var_type "double (*)(double)" [MachPipeline.cpp:413]
+                       :llvm_var_type 0x621000007900
+    C-c C-c
+  Program received signal SIGINT, Interrupt.
+  0x00007fffefdc6a78 in llvm::DataLayout::getAlignment(llvm::Type*, bool) const () from /nix/store/7g85a60mqdzshfdm068468wpbdv209fi-llvm-18.1.5-lib/lib/libLLVM.so.18.1
+  (gdb) where
+  #0  0x00007fffefdc6a78 in llvm::DataLayout::getAlignment(llvm::Type*, bool) const () from /nix/store/7g85a60mqdzshfdm068468wpbdv209fi-llvm-18.1.5-lib/lib/libLLVM.so.18.1
+  #1  0x00007ffff78c0528 in llvm::IRBuilderBase::CreateAlloca(llvm::Type*, llvm::Value*, llvm::Twine const&) () from /home/roland/proj/xo/xo-jit/.build/src/jit/libxo_jit.so.1
+  #2  0x00007ffff78b265e in xo::jit::MachPipeline::create_entry_block_alloca(llvm::Function*, std::__cxx11::basic_string<char, std::char_traits<char>, std::allocator<char> > const&, xo::reflect::TypeDescrBase const*) () from /home/roland/proj/xo/xo-jit/.build/src/jit/libxo_jit.so.1
+  #3  0x000000000040f961 in main ()
+#+end_example
+
+The debug log snippet =:var_type "double (*)(double)"= comes from =xo::reflect::TypeDescr=,  not llvm.
+
+The smoking gun (once you know..) is this snippet:
+
+#+begin_example
+  ex1 llvm_ircode:
+  declare double @callit(double (double), double)
+#+end_example
+
+=double (double)= is a function type,  not a point-to-function type.
+
+* Bugfix
+
+Check back soon..
+
+I'm writing this before modifing =MachPipeline= to
+pass pointers-to-functions instead of functions.
+
+* Postmorten
+
+I spent longer grappling with this bug than I care to admit.
+
+When confronted with llvm hanging, I investigated several alternative explanations
+before the shoe dropped:
+
+I encountered bug working with a more complicated example -- nested lambdas
+
+#+begin_example
+define pow4(x :: int) {
+    define twice(f :: int->int, x :: int) { f(f(x)) }
+    define sq(x :: int) { x*x })
+
+    twice(sq, x)
+}
+#+end_example
+
+Since problem showed with two calls to =MachPipeline::codegen_lambda_defn()=,
+I thought that some stateful interaction between one or more of
+=llvm::Module=, =llvm::Context=, =llvm::ExecutionSession= might be the culprit.
+
+Spent some time refactoring so that =MachPipeline= would generate code for
+nested lambdas before commencing codegen for an enclosing lambda.
+
+Also made related wild-guess changes like introducing explicit activation records,
+and ensuring lambda declarations created separately and in-advance-of definitions.
+
+Similarly,  invented hypothetical state requirements on =IRBuilder=:
+can you interleave inserts to multiple builders for the same function?
+
+I expect perhaps you can, though haven't encountered proof yet.
+
+* Conclusion
+
+Chalk this up to occupational hazard of being at the wrong end of a learning curve;
+trying to reason about llvm behavior int the presence of (gaping) knowledge gaps.

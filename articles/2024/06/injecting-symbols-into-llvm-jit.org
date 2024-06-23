@@ -1,0 +1,155 @@
+#+title: [19jun2024] injecting symbols into llvm jit
+# ----------------------------------------------------------------
+#+tags: @c++ @llvm @jit @pybind11 @transitive-library-dependency @beyond-kaleidoscope
+# ----------------------------------------------------------------
+#+description: injecting symbols for c++-located function into llvm jit
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: c++ llvm jit pybind11
+#+keywords: transitive-library-dependency beyond-kaleidoscope
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* Introduction
+
+I have a hobby/learning project [[https://github.com/Rconybea/xo-jit][xo-jit]] jumping off from the content in the LLVM Kaleidoscope tutorial. [fn:1]
+In contrast to Kaleidoscope, *xo-jit* builds a shared library;  this is intended to support
+jit-compiled code invoked from a python REPL.
+
+[fn:1] Using gcc 13.2, LLVM 18.1.5, building on ubuntu (really WSL2-on-windows), with nix supplying dependencies
+
+* TL;DR
+
+When binding a symbols for in-process jit, consider supplyin absolute address instead of symbol name.
+
+* Context
+
+- trying to make library functions callable from llvm-compiled functions.
+- library [[https://github.com/Rconybea/xo-reflect][xo-reflect]] provides c++ reflection
+- library [[https://github.com/Rconybea/xo-expression][xo-expression]] provides abstract syntax trees (for a typed lambda calculus-ish language)
+- library [[https://github.com/Rconybea/xo-jit][xo-jit]] compiles expressions using LLVM + links into running process via JIT
+- libraries [[https://github.com/Rconybea/xo-pyreflect][xo-pyreflect]], [[https://github.com/Rconybea/xo-pyexpression][xo-pyexpression]], [[https://xo-pygit][xo-pygit]] provide pybind11 wrappers.
+
+Using these libraries can from python:
+- construct an AST for a program
+- compile to machine code
+- run resulting machine code from the same python session,  thanks to Jit
+
+* Setup
+
+Libraries built with =CMAKE_INSTALL_PREFIX= set to =~/local2=.
+Then run python like
+#+begin_src bash
+  PYTHONPATH=~/local2/lib:$PYTHONPATH python
+#+end_src
+(my =PYTHONPATH= rather long, contains a plethora of nix directories)
+
+Then from python:
+#+begin_src python
+  from xo_pyreflect import *
+  from xo_pyexpression import *
+  from xo_pyjit import *
+
+  # builing program like
+  #   lambda (x) : x * x
+  # with
+  #   x :: double
+
+  f64_t = TypeDescr.lookup_by_name('double')
+  x = make_var('x', f64_t)
+  #f = make_sin_pm()     # works
+  f = make_mul_f64_pm()  # fails to resolve
+  c = make_apply(f, [x, x])
+  lm = make_lambda('sq', [x], c)
+
+  mp = MachPipeline.make()
+
+  code = mp.codegen(lm)
+  mp.machgen_current_model()
+#+end_src
+
+* Problem + Diagnosis
+
+All this appears to work,   however the llvm jit is lazy,  so at this point
+although it's ready to produce machine code,  it hasn't actually done so yet.
+
+To get hold of the llvm-compiled =sq= function,  so we can invoke it from python,
+we want to fetch corresponding symbol from the jit:
+
+#+begin_src python
+  sq = mp.lookup_fn('double (*)(double)', 'sq')
+#+end_src
+
+This step would fail with error
+#+begin_example
+  Unable to resolve symbol: mul_f64
+#+end_example
+
+Even though inspecting =libxo_jit.so= shows the symbol is present
+
+#+begin_example
+  $ readelf -d ~/proj/local2/lib/libxo_jit.so | grep mul_f64
+  ... D mul_f64 ...
+#+end_example
+
+We were relying on feature adopted from Kaleidoscope's JIT
+
+#+begin_src C
+   // in xo/jit/Jit.hpp
+
+   dest_dynamic_lib_.addGenerator
+       (cantFail(DynamicLibrarySearchGenerator::GetForCurrentProcess
+                 (data_layout_.getGlobalPrefix())));
+#+end_src
+
+Although this seems to work for kaleidoscope,  it's somehow not sufficient here.
+
+Hypothesis:
+- perhaps =GenericLibrarySearchGenerator::GetForCurrentProcess()= behaves differently
+  when invoked from a shared library (in this case =libxo_jit.so=)?
+- maybe it can find the symbol for =::sin()= because they're in a library that's in scope
+  starting from =libLLVM.so=,  but can't find =::mul_f64()= because that comes from a
+  sibling *xo* library (even when jamming the symbol into =libxo_jit.so= itself!)
+
+* Workaround
+
+- Found [[https://stackoverflow.com/questions/57612173/llvm-jit-symbols-not-found][this article on stack overflow]]:
+- One of the answers gives a workaround for *LLVM-16*.  Was able to adapt that solution for *LLVM-18*:
+- Workaround is to explicitly bind the symbol to an absolute address.
+- This only works via JIT in a running process,  since only then do we know the absolute address
+  for a symbol.
+
+In our jit:
+#+begin_src C
+  class Jit {
+  public:
+      /** intern @p symbol, binding it to address @p dest **/
+      template <typename T>
+      llvm::Error intern_symbol(const std::string & symbol, T * dest) {
+          llvm::orc::SymbolMap symbol_map;
+          symbol_map[mangler_(symbol)]
+              = llvm::orc::ExecutorSymbolDef(llvm::orc::ExecutorAddr::fromPtr(dest),
+                                             llvm::JITSymbolFlags());
+
+          auto materializer = llvm::orc::absoluteSymbols(symbol_map);
+
+          return dest_dynamic_lib_.define(materializer);
+      } /*intern_symbol*/
+  };
+#+end_src
