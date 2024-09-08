@@ -1,0 +1,94 @@
+#+title: [9sep2024] fontconfig+nix: getting fonts via nix
+# ----------------------------------------------------------------
+#+tags: @fontconfig @nixpkgs @nix-env
+# ----------------------------------------------------------------
+#+description: Making nixpkgs fonts available from system fontconfig
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: fontconfig nixpkgs nix-env
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#
+
+* Problem
+
+Setting up new desktop PC running windows 11 + WSL2 + nix.
+
+Invoking emacs from xo-nix2 flake (https://github.com/rconybea/xo-nix2/flake.nix) reveals
+that emacs doesn't get inconsolata from nix as I thought -- =.emacs= complains that =Inconsolata=
+isn't available,  and reverts to some non-fixed-width font (probably Ubuntu Sans or something).
+
+Previous PC not immediately accessible (it's in NYC, and I'm writing this from Chicago);
+but from memory had installed an ubuntu package to make this work.
+
+Since I couldn't quickly find ubuntu package, looked into incorporating nixpkgs-provided fonts
+into my WSL2/ubuntu account setup.
+
+* Strategy
+
+Want to use something like
+
+#+begin_example
+  nix-env -i inconsolata-lgc
+#+end_example
+
+to make a font available.   This command populates =~/.nix-profile/share/fonts=,
+but need something more to get ubuntu to see them.
+
+* Investigation
+
+Arch linux wiki https://wiki.archlinux.org/title/Font_configuration has good writeup on fonts.
+
+* Solution
+
+** Add fontconfig dir
+
+Need to provide =.config/fontconfig/fonts.conf= :
+
+#+begin_example
+  <?xml version="1.0"?>
+  <!DOCTYPE fontconfig SYSTEM "urn:fontconfig:fonts.dtd">
+
+  <!--
+      After changing this file:
+      $ fc-cache -fv
+
+      List available fonts:
+      $ fc-list
+  -->
+
+  <fontconfig>
+      <!-- also pull in any fonts provided via nix package manager -->
+      <dir>~/.nix-profile/share/fonts</dir>
+
+      <dir>~/.local/share/fonts</dir>
+  </fontconfig>
+#+end_example
+
+=fontconfig= already knows to look in this location
+
+** Tweak .emacs
+
+With this change,  add to =~/.emacs=:
+
+#+begin_src emacs_lisp
+  (set-frame-font "Inconsolata LGC 9" nil t)
+#+end_src
+
+That's all!

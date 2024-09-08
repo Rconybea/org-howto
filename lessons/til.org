@@ -22,34 +22,9 @@
 
 * wsl (windows services for linux)
 
-** x11 linux apps wedged after WSL update 2.0.9.0
+- (Nov? 2023) [[file:../articles/2023/11/x11-apps-wedged-after-wsl-update.org][x11 apps wedged after wsl update]]
 
-*** Setup
-
-- PC rebooted overnight;   found it had installed WSL 2.0.9.0
-
-*** Problem
-
-- linux x11 apps unusable;  all seem to draw trash on screen in response to mouse events.
-  - writeup here: [[https://answers.microsoft.com/en-us/windows/forum/all/linux-x11-apps-wedged-after-wsl-update-2090/8b659f22-16d6-4d37-94a2-b4e9521fb82e][linux-x11-appws-wedged-after-wsl-update-2090]]
-  - 30sec youtube video here: [[https://youtu.be/ZSu0HNnf00g][windows11: WSL 16nov23 update breaks x11 apps]]
-
-*** Details
-
-- can see update history:
-  - =Control Panel|Programs|Programs and Features|(sort on Installed On)=
-  - =Settings|Windows Update|Update History= (windows updates only - not sortable by date afaict)
-
-*** Solution
-
-- force WSL vm to shutdown + restart
-
-  #+begin_example
-  PS C:\Users\Rcony> wsl --shutdown
-  PS C:\Users\Rcony> wsl --user roland
-  #+end_example
-
-  Note: presumably wsl VM state is preserved across reboot,   since rebooting PC had no effect here.
+- (Sep 2024) [[file:../articles/2024/09/getting-fonts-from-nix.org][getting fonts from nix]]
 
 * cmake
 
