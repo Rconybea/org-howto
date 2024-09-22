@@ -1,0 +1,228 @@
+#+title: [21sep2024] setting up VPN for ny/chicago
+# ----------------------------------------------------------------
+#+tags: @vpn @digitalocean
+# ----------------------------------------------------------------
+#+description: Setting up VPN between households
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: c++ gcc preprocessor
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* Project
+
+Want to setup VPN between NY and Chicago households.
+
+* Strategy
+
+Both locations using a Unifi router with dynamic IP address from internet provider.
+
+Will be following openvpn setup instructions here
+https://openvpn.net/community-resources/how-to/#openvpn-quickstart
+
+1. create digital ocean droplet, to get host with a static IP address
+
+   | host             | vpn1                 |
+   | datacenter       | NYC3                 |
+   | ipv4             | 159.203.164.149      |
+   | cost             | $8/mo                |
+   | provider website | www.digitalocean.com |
+
+2. put ssh keys on =vpn1=
+
+   #+begin_src bash
+     ssh-copy-id root@159.203.164.149
+   #+end_src
+
+2. Install openvpn and easy-rsa2 on =vpn1=
+
+   #+begin_src bash
+     ssh root@159.203.164.149
+     apt-get install openvpn    # version 2.6.9 on 22sep2024
+     atp-get install easy-rsa
+   #+end_src
+
+   Also do the same on =roly-desktop-23=
+   
+   #+begin_src bash
+     apt-get install openvpn    # version 2.5.9 on 22sep2024
+     atp-get install easy-rsa   # version 3.0.8-1ubuntu1
+   #+end_src
+
+   On =roly-desktop-23= looks like easy-rsa in =/usr/sharee/doc/easy-rsa=
+   
+Next create public key infrastruture (PKI)
+openvpn instructions for using easy-rsa seem to be outdated.
+Following instructions at https://easy-rsa.readthedocs.io/en/latest
+
+4. create easyrsa working directory
+
+   #+begin_src bash
+     mkdir -p path/to/secrets && cd path/to/secrets
+     make-cadir vpn-ca
+   #+end_src
+
+5. setup pki directory    
+   
+   #+begin_src bash
+     cd path/to/secrets
+     ./easyrsa init-pki
+   #+end_src
+   
+   pki/private :: private keys generated on this host
+   pki/reqs :: certificate requests generated on this host
+
+   Will be creating files:
+
+   ca.crt - our own certificate authority's certificate (public proof-of-authority)
+   index.txt - master database of all certificates issued by us
+   serial - serial number, increment-only
+   private/ca.key (private proof-of-authority -- SECURITY CRITICAL)
+   certs_by_serial - all our signed certificates
+   issued - issued certificates by =commonName=
+
+6. build a master certificate authority   
+
+   #+begin_src bash
+     cd path/to/secrets
+     ./easyrsa build-ca
+   #+end_src
+
+   Responding to prompts:
+
+   | passphrase  | ***       |
+   | common name | conybeare |
+
+   Resulting tree
+
+   #+begin_example
+     cd path/to/secrets/vpn-ca/pki && tree
+     .
+     ├── ca.crt
+     ├── certs_by_serial
+     ├── index.txt
+     ├── index.txt.attr
+     ├── issued
+     ├── openssl-easyrsa.cnf
+     ├── private
+     │   └── ca.key
+     ├── renewed
+     │   ├── certs_by_serial
+     │   ├── private_by_serial
+     │   └── reqs_by_serial
+     ├── reqs
+     ├── revoked
+     │   ├── certs_by_serial
+     │   ├── private_by_serial
+     │   └── reqs_by_serial
+     ├── safessl-easyrsa.cnf
+     └── serial
+
+     13 directories, 7 files
+   #+end_example
+
+7. request a certificate
+
+   #+begin_src bash
+     cd path/to/secrets
+     ./easyrsa gen-req vpn1
+   #+end_src
+   
+   | passphrase | *** |
+   | common name | vpn1 |
+
+8. sign certificate
+
+   #+begin_src bash
+     cd path/to/secrets
+     ./easyrsa sign-req server vpn1
+   #+end_src
+
+   | output | =vpn-ca/pki/issued/vpn1.crt= |
+
+
+
+COPYPASTA BELOW ================================================================
+
+* Solution
+
+- stumbled on this stack overflow question
+  https://stackoverflow.com/questions/28939652/how-to-detect-sse-sse2-avx-avx2-avx-512-avx-128-fma-kcvi-availability-at-compile
+
+- turns out to be an easy one-liner
+
+  #+begin_src bash
+    gcc -dM -E - < /dev/null | sort
+  #+end_src
+
+  with output like
+
+  #+begin_example
+    #define _FORTIFY_SOURCE 3
+    #define _LP64 1
+    #define _STDC_PREDEF_H 1
+    #define __ATOMIC_ACQUIRE 2
+    #define __ATOMIC_ACQ_REL 4
+    ...
+  #+end_example
+
+  Here:
+
+  - =-E= tells compiler to emit preprocessor output
+  - =-dM= tells compiler to produce defines instead of preprocesed source code
+  - =-= as last argument tells compiler to compile input from stdin.
+
+- to look at say SSE/AVX related instructions:
+
+  (using gcc 13.2 here)
+
+  #+begin_src bash
+    gcc -dM -E - < /dev/null | egrep "SSE|AVX" | sort
+  #+end_src
+
+  #+begin_example
+    #define __MMX_WITH_SSE__ 1
+    #define __SSE2_MATH__ 1
+    #define __SSE2__ 1
+    #define __SSE_MATH__ 1
+    #define __SSE__ 1
+  #+end_example
+
+  but with =-mavx512f=:
+
+  #+begin_src bash
+    gcc -mavx512f -dM -E - < /dev/null | egrep "SSE|AVX" | sort
+  #+end_src
+
+  with output:
+
+  #+begin_example
+    #define __AVX2__ 1
+    #define __AVX512F__ 1
+    #define __AVX__ 1
+    #define __MMX_WITH_SSE__ 1
+    #define __SSE2_MATH__ 1
+    #define __SSE2__ 1
+    #define __SSE3__ 1
+    #define __SSE4_1__ 1
+    #define __SSE4_2__ 1
+    #define __SSE_MATH__ 1
+    #define __SSE__ 1
+    #define __SSSE3__ 1
+  #+end_example
