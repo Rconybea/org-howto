@@ -1,0 +1,57 @@
+#+title: [2023] wsl update wedges x11 apps
+# ----------------------------------------------------------------
+#+tags: @wsl @x11 @bug
+# ----------------------------------------------------------------
+#+description: wsl update wedges x11 apps
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: c++ gcc preprocessor
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* TL;DR
+
+x11 linux apps wedged after WSL update 2.0.9.0
+
+* Setup
+
+- PC rebooted overnight;   found it had installed WSL 2.0.9.0
+
+* Problem
+
+- linux x11 apps unusable;  all seem to draw trash on screen in response to mouse events.
+  - writeup here: [[https://answers.microsoft.com/en-us/windows/forum/all/linux-x11-apps-wedged-after-wsl-update-2090/8b659f22-16d6-4d37-94a2-b4e9521fb82e][linux-x11-appws-wedged-after-wsl-update-2090]]
+  - 30sec youtube video here: [[https://youtu.be/ZSu0HNnf00g][windows11: WSL 16nov23 update breaks x11 apps]]
+
+* Details
+
+- can see update history:
+  - =Control Panel|Programs|Programs and Features|(sort on Installed On)=
+  - =Settings|Windows Update|Update History= (windows updates only - not sortable by date afaict)
+
+* Solution
+
+- force WSL vm to shutdown + restart
+
+  #+begin_example
+  PS C:\Users\Rcony> wsl --shutdown
+  PS C:\Users\Rcony> wsl --user roland
+  #+end_example
+
+  Note: presumably wsl VM state is preserved across reboot,   since rebooting PC had no effect here.

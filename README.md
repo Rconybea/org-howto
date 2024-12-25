@@ -1,10 +1,18 @@
 # org-howto
 Emacs org git repo with howto articles.
 Published regularly to github pages here: [[https://rconybea.github.io/web]]
-see [[github://Rconybea/org-howto]] for snapshot of generated html tree
+see [[https://github.com:Rconybea/web]] for snapshot of generated html tree
 
 publish content here from emacs, using `M-x org-publish-project org-howto`
-see html on roly-laptop-14 at this url: http://localhost/howto
+See html on roly-laptop-14 at this url: http://localhost/howto
+
+## host configuration for publishing
+```
+mkdir -p ~/proj
+mkdir -p ~/proj/public_html
+(cd ~/proj && git clone git@github.com:Rconybea/org-howto.git)
+(cd ~/proj/public_html && git clone git@github.com:Rconybea/web.git org-howto)
+```
 
 ## interactive emacs configuration
 assuming:
@@ -63,3 +71,7 @@ git commit -m update
 git push
 ```
 
+To reset org-mode publishing cache (e.g. because futzing with host setup)
+```
+rm -rf ~/.org-timestamps/*
+```
