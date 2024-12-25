@@ -29,6 +29,16 @@
 
 Want to setup VPN between NY and Chicago households.
 
+EDIT 25dec2024: Nothing wrong with these instructions, but wound up using Tailscale instead.
+Two major advantage of tailscale for vpn:
+1. vpn network topology is a mesh instead of a star.
+This means hosts communicate using the same pathways they would use if not using
+a vpn,  so network is more scalable and efficient.  See [[https://www.tailscale.com]]
+2. uses wireguard on each node for encryption. Code for wireguard is two orders of
+   magnitude smaller than openvpn, so accordingly less likely to have security
+   vulnerabilities.
+
+
 * Strategy
 
 Both locations using a Unifi router with dynamic IP address from internet provider.
@@ -59,14 +69,14 @@ https://openvpn.net/community-resources/how-to/#openvpn-quickstart
    #+end_src
 
    Also do the same on =roly-desktop-23=
-   
+
    #+begin_src bash
      apt-get install openvpn    # version 2.5.9 on 22sep2024
      atp-get install easy-rsa   # version 3.0.8-1ubuntu1
    #+end_src
 
    On =roly-desktop-23= looks like easy-rsa in =/usr/sharee/doc/easy-rsa=
-   
+
 Next create public key infrastruture (PKI)
 openvpn instructions for using easy-rsa seem to be outdated.
 Following instructions at https://easy-rsa.readthedocs.io/en/latest
@@ -78,13 +88,13 @@ Following instructions at https://easy-rsa.readthedocs.io/en/latest
      make-cadir vpn-ca
    #+end_src
 
-5. setup pki directory    
-   
+5. setup pki directory
+
    #+begin_src bash
      cd path/to/secrets
      ./easyrsa init-pki
    #+end_src
-   
+
    pki/private :: private keys generated on this host
    pki/reqs :: certificate requests generated on this host
 
@@ -97,7 +107,7 @@ Following instructions at https://easy-rsa.readthedocs.io/en/latest
    certs_by_serial - all our signed certificates
    issued - issued certificates by =commonName=
 
-6. build a master certificate authority   
+6. build a master certificate authority
 
    #+begin_src bash
      cd path/to/secrets
@@ -143,7 +153,7 @@ Following instructions at https://easy-rsa.readthedocs.io/en/latest
      cd path/to/secrets
      ./easyrsa gen-req vpn1
    #+end_src
-   
+
    | passphrase | *** |
    | common name | vpn1 |
 

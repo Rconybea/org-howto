@@ -190,7 +190,11 @@
 
 *** SSH from external host
 
-    in external host's =~/.ssh/ssh_config=:
+We have alternatives
+
+**** ssh proxy jump
+
+in external host's =~/.ssh/ssh_config=:
 
     #+begin_example
     # my windows desktop
@@ -214,4 +218,66 @@
     ..passphrase..
     $ ssh roly-desktop-23-wsl
     roland@roly-desktop-23:~$
+    #+end_example
+
+    Note this only works once passwordless ssh to windows is working
+
+**** forward WSL-2 port
+
+NOTE: Have not had success with ssh port forwarding yet, at least as of 25dec2024.
+
+In admin powershell:
+
+#+begin_example
+netsh interface portproxy add v4tov4 `
+  listenaddress=192.168.1.10 `
+  listenport=2322 `
+  connectaddress=172.17.64.1 `
+  connectport=2022
+#+end_example
+
+connect_port :: wsl ssh listening on this port
+
+To rediscover wsl listening on port (from wsl prompt):
+
+     #+begin_example
+     $ netstat -l | grep 2022
+     tcp     0    0    0.0.0.0:2022    0.0.0.0:*   LISTEN
+     tcp6    0    0    [::]:2022       [::]:*      LISTEN
+     #+end_example
+
+To rediscover wsl VM's ip address according to windows11:
+
+In powershell:
+
+    #+begin_example
+    > ipconfig
+
+    Windows IP Configuration
+    ...
+
+    Ethernet adapter vEthernet (WSL (Hyper-V firewall)):
+
+       Connection-specific DNS Suffix  . :
+       Link-local IPv6 Address . . . . . : fe80::d8b4:eb39:67da:da8f%14
+       IPv4 Address. . . . . . . . . . . : 172.17.64.1
+       Subnet Mask . . . . . . . . . . . : 255.255.240.0
+       Default Gateway . . . . . . . . . :
+
+    #+end_example
+
+The address we want is under 'IPv4 Address'.  This IP is local
+to the windows11 instance, it's not visible outside that host.
+
+To see windows11 ports in use:
+
+    in powershell:
+    #+begin_example
+    > netstat -a
+
+    Active Connections
+
+      Proto  Local Address   Foreign Address    State
+      TCP    0.0.0.0:22      roly-desktop-23    LISTENING
+
     #+end_example
