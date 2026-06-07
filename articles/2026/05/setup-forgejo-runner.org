@@ -1,0 +1,498 @@
+#+title: [23may2026] setting up forgjo runner on a cloud host
+# ----------------------------------------------------------------
+#+tags: @forgejo @nixpkgs
+# ----------------------------------------------------------------
+#+description: Setting up forgejo runner on a cloud host
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: fontconfig nixpkgs nix-env
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#
+
+* Problem
+
+Now that git hosting is up, would like to also run github actions.
+
+One advantage is we can setup a host runner so that we share the nix store
+between invocations
+
+* Plan
+
+** Forgejo Runner
+
+*** Runtime environment for forgejo runner
+
+We want to use nix for this:
+
+   #+begin_example
+     # /etc/forgejo-runner/nix/flake.nix
+
+     {
+       description = "Forgejo runner environment";
+
+       inputs = {
+         nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+         flake-utils.url = "github:numtide/flake-utils";
+       };
+
+       outputs = { self, nixpkgs, flake-utils }:
+         flake-utils.lib.eachDefaultSystem (system :
+           let pkgs = nixpkgs.legacyPackages.${system};
+           in {
+             packages.default = pkgs.forgejo-runner;
+             apps.forgejo-runner = {
+               type = "app";
+               program = "${pkgs.forgejo-runner}/bin/forgejo-runner";
+             };
+             devShells.default = pkgs.mkShell {
+               buildInputs = [ pkgs.forgejo-runner ];
+             };
+           }
+         );
+     }
+
+   #+end_example
+
+*** Add runner to forgejo instance
+
+Create runner on https://conybeare.us/git/admin/actions/runners.
+There's a "create new runner" button.
+
+We call the new runner =vpn1-host=.
+
+*** Configuration
+
+Add config =/etc/forgejo-runner/config.yaml
+
+   #+begin_example
+
+     server:
+       connections:
+         host-vpn1:
+           url: https://conybeare.us/git/
+           uuid: 16f1f804-2f00-43f2-8c40-9ce122fd3000
+           token: 9999999999999999999999999999999999999999
+
+     runner:
+       labels:
+         - host
+       executor: host
+
+   #+end_example
+
+Verify by starting runner manually
+
+   #+begin_src sh
+     $ sudo (cd /var/lib/forgejo-runner/nix && nix run . -- daemon --config /etc/forgejo-runner/config.yaml)
+     INFO[2026-05-23T18:26:30Z] Starting runner daemon
+     INFO[2026-05-23T18:26:30Z] runner: vpn1-host, with version: v12.10.1, with labels: [host], ephemeral: false, declared successfully
+     INFO[2026-05-23T18:26:30Z] [poller] launched
+   #+end_src
+
+*** Add user
+
+   #+begin_src
+     $ sudo useradd --system --shell /bin/bash --home /var/lib/forgejo-runner forgejo-runner
+     $ mkdir -p /var/lib/forgejo-runner
+     $ chown -R forgejo-runner:forgejo-runner /var/lib/forgejo-runner
+   #+end_src
+
+*** Systemd setup (forgejo-runner)
+
+Create =/etc/systemd/system/forgejo-runner.service=:
+
+   #+begin_example
+
+     [Unit]
+     Description=Forgejo Runner
+     After=network.target forgejo.service
+
+     [Service]
+     Type=simple
+     User=forgejo
+     WorkingDirectory=/etc/forgejo-runner
+     ExecStart=/nix/var/nix/profiles/default/bin/nix run \
+       /etc/forgejo-runner/nix#forgejo-runner -- daemon --config /etc/forgejo-runner/config.yaml
+     Restart=on-failure
+     RestartSec=5s
+
+     [Install]
+     WantedBy=multi-user.target
+
+   #+end_example
+
+################################################################
+
+Add user
+
+   #+begin_src sh
+     $ sudo useradd --system --shell /bin/false --home /var/lib/forgejo forgejo
+     $ sudo mkdir -p /var/lib/forgejo /var/log/forgejo
+     $ sudo mkdir -p /var/lib/forgejo/lfs
+     $ sudo mkdir -p /var/lib/forgejo/gitea-repositories
+     $ sudo chown -R forgejo:forgejo /var/lib/forgejo /var/log/foregejo
+   #+end_src
+
+Forgejo setup
+
+   #+begin_src sh
+     $ sudo mkdir -p /etc/forgejo
+   #+end_src
+
+create =/etc/foregejo/app.ini=:
+
+   #+begin_example
+
+     [server]
+     ROOT_URL = https://conybeare.us/git
+     APP_DATA_PATH = /var/lib/forgejo
+     HTTP_ADDR = 127.0.0.1
+     HTTP_PORT = 3000
+     START_SSH_SERVER = true
+     SSH_LISTEN_PORT = 2222
+     SSH_USER = forgejo
+     SSH_PORT = 2222
+
+     [database]
+     DB_TYPE = sqlite3
+     PATH = /var/lib/forgejo/forgejo.db
+
+     [repository]
+     ROOT = /var/lib/forgejo/gitea-repositories
+
+     [ui]
+     DEFAULT_THEME = forgejo-dark
+     INSTANCE_SLOGAN = Mad Science, all the way down
+
+     [lfs]
+     PATH = /var/lib/forgejo/lfs
+     STORAGE_TYPE = local
+
+     [log]
+     ROOT_PATH = /var/log/forgejo
+     MODE = file
+     LEVEL = info
+
+     [mailer]
+     ENABLED = false
+
+   #+end_example
+
+   #+begin_src sh
+
+     $ sudo chown forgejo:forgejo /etc/forgejo/app.ini
+     $ sudo chmod 600 /etc/forgejo/app.ini
+
+   #+end_src
+
+*** Runtime environment for forgejo
+
+We want to use nix for this:
+
+   #+begin_example
+     # /etc/forgejo/nix/flake.nix
+
+     {
+       description = "Forgejo environment";
+
+       inputs = {
+         nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+         flake-utils.url = "github:numtide/flake-utils";
+       };
+
+       outputs = { self, nixpkgs, flake-utils }:
+         flake-utils.lib.eachDefaultSystem (system :
+           let pkgs = nixpkgs.legacyPackages.${system};
+           in {
+             packages.default = pkgs.forgejo;
+             apps.forgejo = {
+               type = "app";
+               program = "${pkgs.forgejo}/bin/forgejo";
+             };
+             devShells.default = pkgs.mkShell {
+               buildInputs = [ pkgs.forgejo ];
+             };
+           }
+         );
+     }
+
+   #+end_example
+
+To verify syntax (will also fetch all the deps)
+
+   #+begin_src sh
+
+     $ nix flake show /etc/forgejo/nix
+     $ ls /etc/forgejo/nix/flake.lock   # now pinned
+
+   #+end_src
+
+Also turns out this environment applies to systemd starting foregejo.
+This doesn't get inherited by CI jobs.
+
+To make the second part easier, create a profile in the runner account
+
+   #+begin_src sh
+
+     $ sudo -u forgejo-runner bash
+     $ nix profile install nixpkgs#nodejs
+     ...
+     $ ls /var/lib/forgego-runner/.nix-profile/bin
+     corepack  node  npm  npx
+
+   #+end_src
+
+*** Systemd setup (Forgejo)
+
+   #+begin_example
+
+     [Unit]
+     Description=Forgejo
+     After=network.target
+
+     [Service]
+     Type=simple
+     User=forgejo
+     Group=forgejo
+     WorkingDirectory=/var/lib/forgejo
+     ExecStart=/nix/var/nix/profiles/default/bin/nix run /etc/forgejo/nix#forgejo -- -c /etc/forgejo/app.ini web
+     Restart=always
+     RestartSec=5
+
+     Environment="HOME=/var/lib/forgejo"
+
+     [Install]
+     WantedBy=multi-user.target
+
+   #+end_example
+
+  then setup
+
+   #+begin_src sh
+
+     $ sudo systemctl daemon-reload
+     $ sudo systemctl enable forgejo
+     $ sudo systemctl start forgejo
+
+   #+end_src
+
+*** Verify status
+
+   #+begin_src sh
+
+     $ sudo systemctl status forgejo
+     $ sudo journalctl -u forgejo -n 3
+     May 18 02:16:21 vpn1 nix[1043231]: Listen: http://127.0.0.1:3000
+     May 18 02:16:21 vpn1 nix[1043231]: AppURL(ROOT_URL): https://conybeare.us/
+     May 18 02:16:21 vpn1 nix[1043231]: Starting new Web server: tcp:127.0.0.1:3000 on PID: 1043231
+
+   #+end_src
+
+** Proxy Magic
+
+*** Certificates
+
+   #+begin_src sh
+
+     $ sudo /nix/var/nix/profiles/default/bin/nix run nixpkgs#certbot -- certonly --standalone -d conybeare.us
+     $ tree /etc/letsencrypt
+     /etc/letsencrypt/
+     ├── accounts  [error opening dir]
+     ├── archive  [error opening dir]
+     ├── live  [error opening dir]
+     ├── renewal
+     │   └── conybeare.us.conf
+     └── renewal-hooks
+         ├── deploy
+         ├── post
+         └── pre
+
+   #+end_src
+
+*** Nginx user
+
+Add user
+
+   #+begin_src sh
+     $ sudo useradd --system --shell /bin/false --home /var/cache/nginx nginx
+   #+end_src
+
+Also working directories
+
+   #+begin_src sh
+     $ sudo mkdir -p /var/cache/nginx
+     $ sudo chown nginx:nginx /var/cache/nginx
+     $ sudo chmod 755 /var/cache/nginx
+
+     $ sudo mkdir -p /var/log/nginx
+     $ sudo chown nginx:nginx /var/log/nginx
+     $ sudo chmod 755 /var/log/nginx
+   #+end_src
+
+*** Nginx
+
+=/etc/nginx/nginx.conf=:
+
+   #+begin_example
+
+     events { }
+
+     http {
+         server {
+             listen 80;
+             server_name conybeare.us:
+             return 301 https://$server_name$request_uri;
+         }
+
+         server {
+             listen 443 ssl http2;
+             server_name conybeare.us;
+
+             ssl_certificate /etc/letsencrypt/live/conybeare.us/fullchain.pem;
+             ssl_certificate_key /etc/letsencrypt/live/conybeare.us/privkey.pem;
+
+             location /git/ {
+                 proxy_pass http://127.0.0.1:3000/;
+                 proxy_set_header Host $host;
+                 proxy_set_header X-Real-IP $remote_addr;
+                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                 proxy_set_header X-Forwarded-Proto $scheme;
+             }
+         }
+     }
+
+   #+end_example
+
+*** Runtime environment for nginx
+
+Using nix again:
+
+=/etc/nginx/nix/flake.nix=:
+
+  #+begin_example
+
+    {
+      description = "Nginx environment";
+
+      inputs = {
+        nixpkgs.url = "github:nixos/nixpkgs/nixos-unstable";
+        flake-utils.url = "github:numtide/flake-utils";
+      };
+
+      outputs = { self, nixpkgs, flake-utils }:
+        flake-utils.lib.eachDefaultSystem (system:
+          let pkgs = nixpkgs.legacyPackages.${system};
+          in {
+            packages.default = pkgs.nginx;
+            apps.nginx = {
+              type = "app";
+              program = "${pkgs.nginx}/bin/nginx";
+            };
+          }
+        );
+    }
+
+  #+end_example
+
+To verify syntax (and fetch deps)
+
+  #+begin_src sh
+
+    $ nix flake show /etc/nginx/nix
+    $ ls /etc/nginx/nix/flake.lock
+
+  #+end_src
+
+*** Systemd setup (Nginx)
+
+=/etc/systemd/system/nginx.service=:
+
+  #+begin_example
+
+    [Unit]
+    Description=Nginx
+    After=network.target
+
+    [Service]
+    Type=forking
+    # User=nginx # start as root, bind to ports 80/443; then drop to nginx user for workers
+    ExecStart=/nix/var/nix/profiles/default/bin/nix run /etc/nginx/nix#nginx -- -c /etc/nginx/nginx.conf
+    ExecReload=/nix/var/nix/profiles/default/bin/nix run /etc/nginx/nix#nginx -- -c /etc/nginx/nginx.conf -s reload
+    ExecStop=/nix/var/nix/profiles/default/bin/nix run /etc/nginx/nix#nginx -- -s quit
+
+    [Install]
+    WantedBy=multi-user.target
+
+  #+end_example
+
+ then ssetup
+
+  #+begin_src sh
+
+    $ sudo systemctl daemon-reload
+    $ sudo systemctl restart nginx
+    $ sudo systemctl status nginx
+
+  #+end_src
+
+  #+begin_src sh
+    $ systemctl status nginx
+    ● nginx.service - Nginx
+         Loaded: loaded (/etc/systemd/system/nginx.service; disabled; preset: enabled)
+         Active: active (running) since Mon 2026-05-18 04:13:51 UTC; 4s ago
+        Process: 1045381 ExecStart=/nix/var/nix/profiles/default/bin/nix run /etc/nginx/nix#nginx -- -c /etc/nginx/nginx.conf (code=exited, status=0/SUCCESS)
+       Main PID: 1045385 (nginx)
+          Tasks: 2 (limit: 9489)
+         Memory: 2.9M (peak: 145.4M)
+            CPU: 1.281s
+         CGroup: /system.slice/nginx.service
+                 ├─1045385 "nginx: master process /nix/store/6xi5jqgw6mqdvzk36285ywc17wnx1548-nginx-1.30.1/bin/nginx -c /etc/nginx/nginx.conf"
+                 └─1045386 "nginx: worker process"
+
+    May 18 04:13:50 vpn1 systemd[1]: Starting nginx.service - Nginx...
+    May 18 04:13:51 vpn1 nix[1045381]: nginx: [warn] the "listen ... http2" directive is deprecated, use the "http2" directive instead in /etc/nginx/nginx.conf:11
+    May 18 04:13:51 vpn1 systemd[1]: Started nginx.service - Nginx.
+   #+end_src
+
+** Enable-on-boot
+
+  #+begin_src sh
+  $ sudo systemctl enable nginx forgejo
+  #+end_src
+
+** Testing
+
+  #+begin_src sh
+
+  $ curl  https://conybeare.us
+  <!DOCTYPE html>
+  <html lang="en-US" data-theme="forgejo-auto">
+  ...
+  #+end_src
+
+*** Forgejo install (web)
+
+Now setup forgejo by visiting https://conybeare.us
+
+| Instance Slogan       | It's mad science, all the way down    |
+| Repository root path  | =/var/lib/forgejo/gitea-repositories= |
+| Git LFS root path     | =/var/lib/forgejo/lfs=                |
+| Log path              | =/var/log/forgejo=                    |
+| Administrator Account | username, email, ...                  |

@@ -1,0 +1,313 @@
+#+titel: [24may2026] git subtree bugfix
+# ----------------------------------------------------------------
+#+tags: @git @git-subtree @xo-umbrella @nix
+# ----------------------------------------------------------------
+#+description: bugfix for 'git subtree'
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: fontconfig nixpkgs nix-env
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#
+
+* Problem
+
+We're using =git subtree= with [[https://conybeare.us/git/xo-umbrella2][xo-umbrella2]], to maintain independent satellite repos
+(such as [[https://conybeare.us/git/xo-indentlog][xo-indentlog]]).
+
+Encountered unexpected error from =git subtree split=:
+
+#+begin_src sh
+  $ cd ~/proj/xo-umbrella2
+  $ git subtree split --rejoin --prefix=xo-indentlog -b _dmeux/xo-indentlog
+  fatal: cache for 624178f1932508a687d85ddea56d03998193207a already exists!
+#+end_src
+
+#+begin_src sh
+  $ which git
+  /home/roland/nixroot/nix/store/jwv5hg4kdb322qi0y9ss6xjx94bgxh8l-git-2.50.1/bin/git
+#+end_src
+
+Initially puzzling, because the =624178= commit doesn't actually intersect the =xo-indentlog= prefix
+
+* Diagnosis
+
+Make a copy of the subtree implementation, so we can modify it.
+
+#+begin_src sh
+  $ mkdir -p /tmp/git-exec-real
+  $ cp -r $(git --exec-path) /tmp/git-exec-real
+  $ chmod -R u+w /tmp/git-exec-real
+#+end_src
+
+Verify that it runs
+
+#+begin_src sh
+  $ GIT_EXEC_PATH=/tmp/git-exec-real git subtree split --prefix=xo-indentlog -b _demux/xo-indentlog
+#+end_src
+
+Find the error message in =/tmp/git-exec-real/git-subtree= (about line =337=).
+
+#+begin_src sh
+
+  # Usage: cache_set OLDREV NEWREV
+  cache_set () {
+      assert test $# = 2
+      oldrev="$1"
+      newrev="$2"
+      if test "$oldrev" != "latest_old" &&
+          test "$oldrev" != "latest_new" &&
+          test -e "$cachedir/$oldrev"
+      then
+          die "fatal: cache for $oldrev already exists!"
+      fi
+      echo "$newrev" >"$cachedir/$oldrev"
+  }
+
+#+end_src
+
+add some diagnostics output
+
+#+begin_src sh
+
+  # Usage: cache_set OLDREV NEWREV
+  cache_set () {
+      assert test $# = 2
+      oldrev="$1"
+      newrev="$2"
+      if test "$oldrev" != "latest_old" &&
+              test "$oldrev" != "latest_new" &&
+              test -e "$cachedir/$oldrev"
+      then
+          echo "DEBUG: dup cache entry for $oldrev" >&2
+          echo "       newrev=$newrev" >&2
+          echo "       existing=$(cat $cachedir/$oldrev)" >&2
+          die "fatal: cache for $oldrev already exists!"
+      fi
+      echo "$newrev" >"$cachedir/$oldrev"
+  }
+
+#+end_src
+
+#+begin_src sh
+  $ GIT_EXEC_PATH=/tmp/git-exec-real git subtree split --prefix=xo-indentlog -b _demux/xo-indentlog
+  DEBUG: dup cache entry for 624178f1932508a687d85ddea56d03998193207a
+         newrev=624178f1932508a687d85ddea56d03998193207a
+         existing=624178f1932508a687d85ddea56d03998193207a
+#+end_src
+
+Well, that's provocative!  All 3 commits are the same!
+
+That's consistent with commit not having any changes that intersect with the =xo-indentlog/= prefix.
+
+* Treatment
+
+Problem is that we have multiple merge commits in scope.
+In particular: merge commits created because: before running split for =xo-indentlog=,
+had run it for sibling =xo-cmake=.
+
+In any case obvious correction is to suppress the error when =git subtree split= arrives
+at the same commit on multiple paths. Edit =/tmp/git-exec-real/git-subtree= as shown:
+
+#+begin_src sh
+
+# Usage: cache_set OLDREV NEWREV
+cache_set () {
+    assert test $# = 2
+    oldrev="$1"
+    newrev="$2"
+    if test "$oldrev" != "latest_old" &&
+        test "$oldrev" != "latest_new" &&
+        test -e "$cachedir/$oldrev"
+    then
+        existing=$(cat "$cachedir/$oldrev")
+        if test "$existing" = "$newrev"
+        then
+            # same mapping
+            #  -> commit doesn't touch prefix
+            #  -> must not cache
+            return
+        else
+            die "fatal: cache for $oldrev already exists!"
+        fi
+    fi
+    echo "$newrev" >"$cachedir/$oldrev"
+}
+
+#+end_src
+
+..and try out the patch:
+
+#+begin_src sh
+  $ GIT_EXEC_PATH=/tmp/git-exec-real git subtree split --prefix=xo-indentlog -b _demux/xo-indentlog
+  ...
+  $
+#+end_src
+
+* Followup
+
+** xo-umbrella2 nix shells
+
+To maintain this patch locally, add to nix shell setup for =xo-umbrella2=.
+
+Add =xo-umbrella2/patches/git-subtree-cache-fix.patch=:
+
+#+begin_example
+--- a/git-subtree
++++ b/git-subtree
+@@ -341,7 +341,13 @@ cache_set () {
+        if test "$oldrev" != "latest_old" &&
+                test "$oldrev" != "latest_new" &&
+                test -e "$cachedir/$oldrev"
+        then
+-               die "fatal: cache for $oldrev already exists!"
++               existing=$(cat "$cachedir/$oldrev")
++               if test "$existing" = "$newrev"
++               then
++                       return
++               else
++                       die "fatal: cache for $oldrev already exists!"
++               fi
+        fi
+        echo "$newrev" >"$cachedir/$oldrev"
+}
+#+end_example
+
+Then modify =xo-umbrella2/default.nix= so it creates git with the patch applied.
+We don't add this as an overlay, since we don't need/want working nix packages to change.
+
+#+begin_src nix
+  let
+    pkgs = import nixpkgs-patch {
+      # overlays..
+    };
+
+    # bona fide bux in git 2.50.1
+    patched-git = pkgs.git.overrideAttrs (old: {
+        postInstall = (old.postInstall or "") + ''
+          patch $out/libexec/git-core/git-subtree ${./patches/git-subtree-cache-fix.patch}
+        '';
+      });
+  in
+  let
+    devutils = [
+      patched-git # instead of pkgs.git
+      pkgs.catch2
+      # ..etc..
+    ]
+
+#+end_src
+
+** upstream git repo
+
+Clone git repo, and make a branch
+
+#+begin_src sh
+  $ cd ~/proj
+  $ git clone https://githjub.com/git/git.git
+
+  $ cd git
+  $ git switch -c subtree-fix
+#+end_src
+
+Script we need to modify is =contrib/subtree/git-subtree.sh=.
+Make parallel change similar to original patch + commit.
+
+Write a detailed commit message, since that's expected
+
+#+begin_example
+$ git log -1
+  commit 9117eabc9c55187fd6c0204063734b72979f2082 (HEAD -> subtree-fix)
+  Author: Roland Conybeare <rconybeare@gmail.com>
+  Date:   Sun May 24 16:29:58 2026 -0400
+
+      subtree: fix cache_set failure on commit reachable by multiple paths
+
+      When splitting a subtree, committs that do not intersect prefix
+      receive identity mapping (oldrev -> oldrev). If such commit
+      is reachable by multiple paths in the revision DAG, the cache_set()
+      function may be called twice for the same (oldrev -> newrev) pair.
+
+      This triggers fatal error "cache for <hash> already exists"
+
+      Bugfix is to make cache_set() idempotent when the same
+      (oldrev -> newrev) pair appears multiple times.
+
+      Signed-off-by: Roland Conybeare <rconybeare@gmail.com>
+
+#+end_example
+
+Follow git's contribution process.  Setup in =~/.gitconfig=
+
+#+begin_example
+  [sendemail]
+      smtpserver = smtp.gmail.com
+      smtpserverport = 587
+      smtpencryption = tls
+      smtpuser = rconybeare@gmail.com
+#+end_example
+
+Get git to generate patch for us.
+
+#+begin_src sh
+  $ cd ~/proj/git
+  $ mkdir outbound
+  $ git format-patch --cover-letter -o outbound/ --base=auto @{u}
+  ..edit the cover-letter patch...
+#+end_src
+
+=outbound/0000-cover-letter.patch=:
+
+#+begin_example
+  From 9117eabc9c55187fd6c0204063734b72979f2082 Mon Sep 17 00:00:00 2001
+  From: Roland Conybeare <rconybeare@gmail.com>
+  Date: Sun, 24 May 2026 16:50:26 -0400
+  Subject: [PATCH 0/1] bugfix git subtree split
+
+  I have a project that combines multiple independent repos
+  into an unmbrella repo, relying on git subtree.
+  Encountered a unrecoverable fatal error
+  from 'git subtree split' with error
+
+      fatal: cache for <hash> already exists!
+
+  Problem arises because history to be split contains merge commits
+  that cause DAG traversal to consider the same umbrella commit on
+  multiple paths. The fatal triggers when 'git subtree split' tries
+  to cache the same commit twice; enclosed patch prunes these duplicate
+  paths.
+
+  Roland Conybeare (1):
+    subtree: fix cache_set failure on commit reachable by multiple paths
+
+   contrib/subtree/git-subtree.sh | 8 +++++++-
+   1 file changed, 7 insertions(+), 1 deletion(-)
+
+
+  base-commit: 6a4418c36d6bad69a599044b3cf49dcbd049cb45
+  --
+  2.50.1
+#+end_example
+
+Finally, send it:
+
+#+begin_src sh
+  $ git send-email --to=git@vger.kernel.org outbound/*.patch
+  ...[y] to prompts...
+#+end_src
