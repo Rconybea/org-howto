@@ -1,4 +1,6 @@
 * Links
+  - https://mcyoung.xyz/2023/11/27 SIMD programming
+
   - https://breathe.readthedocs.io/en/latest/readthedocs.html publishing to readthedocs doxygen+breathe+sphinx
   - https://breathe.readthedocs.io/en/latest doxygen->sphinx bridge
   - https://bashtage.github.io/sphinx-material/rst-cheatsheet/rst-cheatsheet.html sphinx cheatsheet
