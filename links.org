@@ -56,3 +56,11 @@
     _mm512_set1_pd broadcast float64 element to destination
     _mm512_set_pd(double e0, .., double e7)  broadcast packed float64 elements
     _mm512_setzero_pd make vector __m512d with all elts set to zero VXORPD
+
+** Nix stuff
+  - https://somas.is/note-organizing-nix-configuration-without-flakes.html
+  - https://samuel.dionne-riel.com/blog/2023/09/06/flakes-is-an-experiment-that-did-too-much-at-once.html flake complaints
+  - https://jade.fyi/blog/pinning-nixos-with-npins/  another Jade blog post
+
+** Toolchain stuff
+  - https://blogsystem5.substack.com/p/glibc-versions-runtime
