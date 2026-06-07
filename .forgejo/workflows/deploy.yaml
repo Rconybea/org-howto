@@ -1,0 +1,23 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish:
+    runs-on: host
+    steps:
+
+      - name: Setup PATH
+        run: |
+          echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
+          echo "/var/lib/forgejo-runner/.nix-profile/bin" >> $GITHUB_PATH
+
+      - name: checkout
+        run: |
+          git clone --quiet --depth=1 $GITHUB_SERVER_URL/roland/org-howto.git .
+
+      - name: publish
+        run: |
+          nix-shell shell.nix --run "./bin/howto-publish /var/www/org-howto"
