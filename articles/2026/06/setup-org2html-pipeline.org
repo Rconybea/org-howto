@@ -1,0 +1,168 @@
+#+title: [7jun2026] setting up self-hosted static org-mode website 
+# ----------------------------------------------------------------
+#+tags: @forgejo @nixpkgs @org-mode @nginx
+# ----------------------------------------------------------------
+#+description: self-hosted org2html pipline
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: fontconfig nixpkgs nix-env
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* Problem
+
+Want alternative publishing destination to https://rconybea.github.io/web/
+
+* Plan
+
+Expand on rented droplet git hosting 
+
+| org-mode source | https://conybeare.us/git/org-howto |
+| host html       | =/var/www/org-howto=               |
+
+Ingredients:
+| nginx  | =/etc/nginx/nginx.conf=                                |
+| env    | =https://conybeare.us/git/org-howto/shell.nix=         |
+| script | =https://conybeare.us/git/org-howto/bin/howto-publish= |
+
+** Nginx
+
+1. Add a new location to nginx configuration, inside the 443 server block
+
+  #+begin_example
+     # /etc/nginx/nginx.conf
+
+     events { }
+
+     http {
+         server {
+	     listen 443 ...;
+
+	     ...
+
+             location /git/ {
+	         ...
+             }
+
+	     location /web/ {
+	         alias /var/www/org-howto/;
+		 index index.html;
+	     }
+         }
+     }
+
+  #+end_example
+
+2. Tell nginx to reload its configuration
+
+   #+begin_src sh
+     $ sudo systemctl reload nginx
+   #+end_src
+
+** Nix environment
+
+Reproducible environment for batch-mode org2html pipeline.
+
+  #+begin_example
+    # org-howto/shell.nix
+
+    { pkgs ? import <nixpkgs> {} }:
+
+    let
+      emacs = (pkgs.emacsPackagesFor pkgs.emacs30).emacsWithPackages (ep: [
+	ep.htmlize
+      ]);
+    in
+    pkgs.mkShell {
+      buildInputs = [ emacs ];
+    }
+  #+end_example
+
+Relying on =htmlize= for highlighting e.g. in bash source blocks.
+
+** Publishing script
+
+Simple bash script for now.
+
+=org-howto/bin/howto-publish=:
+
+  #+begin_src sh
+    #!/usr/bin/env bash
+
+    set -euo pipefail
+
+    src_dir="$(cd "$(dirname "$0")/.." && pwd)"
+    dest_dir="${1:?usage: howto-publish DEST_DIR}"
+
+    mkdir -p "${dest_dir}"
+
+    emacs --batch \
+      --eval "(require 'ox-publish)" \
+      --eval "(setq org-publish-project-alist
+    '((\"org-howto\"
+       :components (\"org-howto-notes\" \"org-howto-static\"))
+      (\"org-howto-notes\"
+       :base-directory \"${src_dir}\"
+       :base-extension \"org\"
+       :publishing-directory \"${dest_dir}\"
+       :recursive t
+       :publishing-function org-html-publish-to-html
+       :auto-preamble t)
+      (\"org-howto-static\"
+       :base-directory \"${src_dir}\"
+       :base-extension \"css|html|js|svg|ico|png|jpg|gif|pdf\"
+       :publishing-directory \"${dest_dir}\"
+       :recursive t
+       :publishing-function org-publish-attachment)))" \
+      --eval "(org-publish \"org-howto\" t)"
+  #+end_src
+
+** Runner setup
+
+We already have a self-hosted runner for https://conybeare.us/git, with persistent =/nix/store= access.
+All that remains is to give that runner a new workflow:
+
+  #+begin_src yaml
+    # org-howto/.forgejo/workflows/deploy.yaml
+
+    name: Deploy
+
+    on:
+      push:
+        branches: [main]
+
+    jobs:
+      publish:
+        runs-on: host
+        steps:
+
+          - name: Setup PATH
+            run: |
+              echo "/nix/var/nix/profiles/default/bin" >> $GITHUB_PATH
+              echo "/var/lib/forgejo-runner/.nix-profile/bin" >> $GITHUB_PATH
+
+          - name: checkout
+            run: |
+              git clone --quiet --depth=1 $GITHUB_SERVER_URL/roland/org-howto.git .
+
+          - name: publish
+            run: |
+              nix-shell shell.nix --run "./bin/howto-publish /var/www/org-howto"
+  #+end_src yaml
+  

@@ -1,8 +1,8 @@
-#+title: [17may2026] setting up git on a cloud host
+#+title: [17may2026] setting up self-hosted git
 # ----------------------------------------------------------------
 #+tags: @forgejo @nixpkgs
 # ----------------------------------------------------------------
-#+description: Setting up git hosting on a cloud host
+#+description: Setting up self-hosted git
 #
 # org-publish options
 #

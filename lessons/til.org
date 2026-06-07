@@ -35,6 +35,8 @@
 - (May 2026) [[file:../articles/2026/05/setup-forgejo-at-digital-ocean.org][forgejo setup]]
 - (May 2026) [[file:../articles/2026/05/setup-forgejo-runner.org][forgejo runner setup)]]
 
+- (Jun 2026) [[file:../articles/2026/06/setup-org2html-pipeline.org][self-hosted org-howto publishing]]
+
 * cmake
 
 ** inconsistent eigen package (25oct2023)
