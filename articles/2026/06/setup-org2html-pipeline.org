@@ -41,6 +41,15 @@ Ingredients:
 | env    | =https://conybeare.us/git/org-howto/shell.nix=         |
 | script | =https://conybeare.us/git/org-howto/bin/howto-publish= |
 
+** Html Location
+
+Provide a place for static html content
+
+  #+begin_src sh
+    $ sudo mkdir -p /var/www/org-howto
+    $ chown forgejo-runner:forgejo-runner /var/www/org-howto
+  #+end_src
+
 ** Nginx
 
 1. Add a new location to nginx configuration, inside the 443 server block
