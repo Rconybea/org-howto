@@ -31,9 +31,9 @@ Eigen cmake support seems to be inconsistent
 
 * Setup
 
-- library [[https://conybeare.us/git/xo-kalmanfilter][xo-kalmanfilter]] depends on eigen
-- library [[https://conybeare.us/git/xo-pykalmanfilter][xo-pykalmanfilter]] depends on =xo-kalmanfilter=
-- the project [[https://github.com/Rconybea/xo-umbrella2][xo-umbrella2]] incorporates both codebases (along with others) into a single source tree
+- library [[https://conybeare.us/git/roland/xo-kalmanfilter][xo-kalmanfilter]] depends on eigen
+- library [[https://conybeare.us/git/roland/xo-pykalmanfilter][xo-pykalmanfilter]] depends on =xo-kalmanfilter=
+- the project [[https://conybeare.us/git/roland/xo-umbrella2][xo-umbrella2]] incorporates both codebases (along with others) into a single source tree
   (using git subrepo).
 - alternatively, can build+install libraries independently (in bottom-up dependency order),
 
