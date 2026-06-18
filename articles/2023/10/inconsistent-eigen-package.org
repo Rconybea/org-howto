@@ -1,0 +1,157 @@
+#+title: [2023] inconsistent eigen package
+# ----------------------------------------------------------------
+#+tags: @eigen @cmake
+# ----------------------------------------------------------------
+#+description: inconsistent eigen package
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: c++ gcc preprocessor
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* TL;DR
+
+Eigen cmake support seems to be inconsistent
+
+* Setup
+
+- library [[https://github.com/Rconybea/xo-kalmanfilter][xo-kalmanfilter]] depends on eigen
+- library [[https://github.com/Rconybea/xo-pykalmanfilter][xo-pykalmanfilter]] depends on =xo-kalmanfilter=
+- the project [[https://github.com/Rconybea/xo][xo]] incorporates both codebases (along with others) into single umbrella source tree (using git submodules).
+- alternatively, can build+install libraries independently (in bottom-up dependency order),
+
+We call this last a 'vanilla build',  since it follows standard practice for installing 3rd-party libraries.
+In a so-called vanilla build,  we use cmake's =find_package()= support to acquire each dependency.
+In a vanilla build,  When cmake builds a library,  it obtains its dependencies from their final install location.
+
+Contrast this with the submodule build:  here,  when cmake build a library,  it obtains its dependencies from the build tree
+
+* Problem
+
+- submodule build works as expected;   compile flags include required =-Ipath/to/eigen/eigen3=,
+  so c++ code like this compiles
+  #+begin_src c++
+    #include <Eigen/Dense>
+  #+end_src
+
+- vanilla build fails:
+  when compiling xo-pykalmanfilter,  the header path for eigen is given as =-Ipath/to/eigen=
+  instead of =-Ipath/to/eigen/eigen3=,  so now need this to compile instead:
+  #+begin_src c++
+    #include <eigen3/Eigen/Dense>
+  #+end_src
+
+* Details
+
+- =xo-kalmanfilter= specifies eigen dependency in the approved manner:
+
+  #+begin_src cmake
+    # xo-kalmanfilter/src/kalmanfilter/CMakeLists.txt
+    set(SELF_LIB xo_kalmanfilter)
+    ..
+    xo_external_target_dependency(${SELF_LIB} Eigen3 Eigen3::Eigen)
+  #+end_src
+
+  which expands as if we had written:
+  #+begin_src cmake
+    find_package(Eigen3 CONFIG REQUIRED)
+    target_link_libraries(${SELF_LIB} PUBLIC Eigen3::Eigen)
+  #+end_src
+
+  This works as expected in submodule build.
+  In submodule build, codebases =xo-kalmanfilter= and =xo-pykalmanfilter= (amongst others) are incorporated
+  into a single source tree:
+
+  #+begin_src cmake
+    # xo-sm2/CMakeLists.txt
+    set(XO_SUBMODULE_BUILD True)
+    ..
+    add_subdirectory(repo/xo-kalmanfilter)
+    add_subdirectory(repo/xo-pykalmanfilter)
+  #+end_src
+
+- =xo-pykalmanfilter= specifies =xo-kalmanfilter= dependency:
+
+  #+begin_src cmake
+    # xo-pykalmanfilter/src/pykalmanfilter/CMakeLists.txt
+    set(SELF_LIB pykalmanfilter)
+    ..
+    xo_pybind11_dependency(${SELF_LIB} xo_kalmanfilter)
+  #+end_src
+
+  which expands differently,  depending on build type.
+  In submodule build,  as if we had written:
+
+  #+begin_src cmake
+    target_include_directories(${SELF_LIB} PUBLIC $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/repo/xo_kalmanfilter/include>)
+    target_include_directories(${SELF_LIB} PUBLIC $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}/repo/xo_kalmanfilter/include>)
+    target_link_libraries(${SELF_LIB} PUBLIC xo_kalmanfilter)
+  #+end_src
+
+  In vanilla build,  =xo_pybind11_dependency()= expands differently:
+
+  #+begin_src cmake
+    find_package(xo_kalmanfilter CONFIG REQUIRED)
+    ..
+    target_link_libraries(${SELF_LIB} PUBLIC xo_kalmanfilter)
+  #+end_src
+
+- =xo-kalmanfilter= provides support for cmake =find_package()=:
+
+  #+begin_src cmake
+    # xo-kalmanfilter/cmake/xo_kalmanfilterConfig.cmake.in
+
+    @PACKAGE_INIT@
+
+    include(CMakeFindDependencyMacro)
+    find_dependency(reactor)
+    find_dependency(eigen3)
+
+    include("${CMAKE_CURRENT_LIST_DIR}/@PROJECT_NAME@Targets.cmake")
+    check_required_components("@PROJECT_NAME@")
+  #+end_src
+
+  and generated =xo_kalmanfilterTargets.cmake= file contains:
+
+  #+begin_src cmake
+    # Create imported target xo_kalmanfilter
+    add_library(xo_kalmanfilter SHARED IMPORTED)
+
+    set_target_properties(xo_kalmanfilter PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include;${_IMPORT_PREFIX}/include/xo/kalmanfilter"
+      INTERFACE_LINK_LIBRARIES "reactor;Eigen3::Eigen"
+    )
+  #+end_src
+
+  which.. doesn't look wrong :)
+
+  Evidence points to an inconsistency in Eigen-provided cmake support, if not in cmake proper.
+
+* Workaround
+
+  It's sufficient to restate the eigen dependency in =xo-pykalmanfilter=:
+
+  #+begin_src cmake
+    # xo_pykalmanfilter/src/pykalmanfilter/CMakeLists.txt
+    set(SELF_LIB pykalmanfilter)
+    ...
+    xo_external_target_dependency(${SELF_LIB} Eigen3 Eigen3::Eigen)
+  #+end_src
+
+
