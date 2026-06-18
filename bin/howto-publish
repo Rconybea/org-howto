@@ -8,7 +8,9 @@ dest_dir="${1:?usage: howto-publish DEST_DIR}"
 mkdir -p "${dest_dir}"
 
 emacs --batch \
+  --eval "(package-activate-all)" \
   --eval "(require 'ox-publish)" \
+  --eval "(setq org-html-htmlize-output-type 'css)" \
   --eval "(setq org-publish-project-alist
     '((\"org-howto\"
        :components (\"org-howto-notes\" \"org-howto-static\"))
