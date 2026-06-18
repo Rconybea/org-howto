@@ -1,10 +1,20 @@
 # org-howto
-Emacs org git repo with howto articles.
-Published regularly to github pages here: [[https://rconybea.github.io/web]]
-see [[https://github.com:Rconybea/web]] for snapshot of generated html tree
 
-publish content here from emacs, using `M-x org-publish-project org-howto`
-See html on roly-laptop-14 at this url: http://localhost/howto
+Emacs org git repo with howto articles.
+
+Published to https://conybeare.us/web regularly.
+Also from time-to-time to github pages here: [[https://rconybea.github.io/web]]
+
+Publish content here by pushing to [[ssh://forgejo@conybeare.us:2222/roland/org-howto.git]]
+
+Publish to local html tree:
+
+```
+$ cd path/to/org-howto
+$ nix-shell shell.nix --run "./bin/howto-publish ~/proj/public_html/org-howto"
+```
+
+Alternatively from emacs using `M-x org-publish-project org-howto`.
 
 ## host configuration for publishing
 ```
