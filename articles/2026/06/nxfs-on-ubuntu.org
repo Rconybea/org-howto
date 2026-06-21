@@ -27,7 +27,7 @@
 
 * Problem
 
-Nix (compiled from source, see https://github.com/Rconybea/nix-from-scratch) running sandbox builds sometimes fails with
+Nix 2.24.9 (compiled from source, see https://github.com/Rconybea/nix-from-scratch) running sandbox builds sometimes fails with
 opaque "could not allocate from pty" error.
 
 Problem only occurs in a build sandbox, i.e. from =nix-build ..=.
@@ -115,3 +115,8 @@ the facility.
 
 Presumably nixos already sets itself up this way.
 A regular non-nixos user won't notice absent building a package from source code.
+
+Nix *could* have mounted a fresh instance of =devpts=.
+For example that's what Docker/runc does, along with pointing =/dev/ptmx= to =/dev/pts/ptmx=,
+but (at least as of 2.24.9) it supports just "bind just the outside stuff you tell me to bind"
+approach.
