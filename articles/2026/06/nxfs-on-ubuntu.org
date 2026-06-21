@@ -1,6 +1,6 @@
 #+title: [20jun2026] nix-from-scratch on ubuntu
 # ----------------------------------------------------------------
-# +targs: @@nixpkgs $nxfs
+# +targs: @nixpkgs @nxfs
 # ----------------------------------------------------------------
 #+description: nix-from-scratch on ubuntu
 #

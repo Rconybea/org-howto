@@ -1,0 +1,187 @@
+#+title: [20jun2026] nix binary cache
+# ----------------------------------------------------------------
+# +targs: @nixpkgs @nix @nxfs @binary-cache @FOD
+# ----------------------------------------------------------------
+#+description: nix binary cache
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: fontconfig nixpkgs nix-env
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* Problem
+
+I run nix with a non-standard nix store location (see https://github.com/Rconybea/nix-from-scratch).
+This means that all packages build from source, and the default substituter =cache.nixos.org=
+is not usable.
+
+One problem that arises is that internet endpoints aren't always permanent;
+over time URLs change or disappear.
+
+Nix' solution for this is a *binary cache*.
+This note describes setting one up.
+
+Typical purpose is to record nix derivation *outputs* separately from the nix store.
+Although we'll get that as a byproduct, our goal is actuall to store derivation *inputs*,
+i.e. so-called fixed-output *source derivations*.
+
+* Setup
+
+** Create Cache Directory and Key
+
+I have a network attached storage device with multiple TB of unused capacity.
+
+We'll choose a location for holding nix store artifacts.  As of June 2026,
+my nix store contains about 190GB.
+
+We will make the binary cache available at =/mnt/nas1/share2/nix-cache=.
+
+#+begin_src sh
+  nix-store --generate-binary-cache-key nas1-=roland-1 \
+  		  ~/.config/nix/nas1-cache.secret \
+  		  ~/.config/nix/nas1-cache.public
+  mkdir /mnt/nas1/share2/nix-cache
+  cp ~/.config/nix/nas1-cache.public /mnt/nas1/share2/nix-cache/
+#+end_src
+
+** Copy Nix Store
+
+#+begin_src sh
+  nix copy --all \
+  	--to 'file:///mnt/nas1/share2/nix-cache?secret-key=/path/to/.config/nix/nas1-cache.secret&compression=zstd'
+#+end_src
+
+** Register Store as Substituter
+
+in =~/.confrig/ni9x/nix.confg=:
+#+begin_src conf
+  substituters = file:///mnt/nas1/share2/nix-cache
+  trusted-public-keys = nas1-roland-1:xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx=
+#+end_src
+
+* Maintenance
+
+Added some scripts to =nix-from-scratch=:
+
+Manual script
+
+#+begin_example
+# nix-from-scratch/binary-cache/nix-cache-sync.sh
+
+#!/usr/bin/env bash
+#
+# nix-cache-sync.sh — push the local nix store to the NAS binary cache.
+#
+# This workstation runs a from-source nix with a relocated store
+# (/home/roland/nixroot/nix/store), so it can't use cache.nixos.org and builds
+# everything from source. The NAS binary cache is our durable, self-controlled
+# archive of sources + build outputs, and the only configured substituter
+# (see ~/.config/nix/nix.conf).
+#
+# This copies every currently-valid store path into the cache. It is incremental
+# (paths already present are skipped), so it's cheap to re-run — use it as the
+# after-a-build top-up, or let the systemd timer (../systemd/) run it nightly.
+#
+# Usage:
+#   nix-cache-sync.sh            # sweep the whole store (--all)
+#   nix-cache-sync.sh PATH...    # copy only the given store paths (+ closures)
+#
+# Override defaults via env:
+#   NIX_CACHE_MOUNT     NAS mount point that must be mounted (default /mnt/nas1/share2)
+#   NIX_CACHE_DIR       cache directory               (default $NIX_CACHE_MOUNT/nix-cache)
+#   NIX_CACHE_SECRET    signing key  (default ~/.config/nix/nas1-cache.secret)
+#   NIX_CACHE_COMPRESSION  zstd|xz|none               (default zstd)
+#   NIX                 nix binary   (default /home/roland/nixroot/bin/nix)
+
+set -euo pipefail
+
+MOUNT="${NIX_CACHE_MOUNT:-/mnt/nas1/share2}"
+CACHE_DIR="${NIX_CACHE_DIR:-${MOUNT}/nix-cache}"
+SECRET="${NIX_CACHE_SECRET:-${HOME}/.config/nix/nas1-cache.secret}"
+COMPRESSION="${NIX_CACHE_COMPRESSION:-zstd}"
+NIX="${NIX:-/home/roland/nixroot/bin/nix}"
+
+die() { echo "nix-cache-sync: $*" >&2; exit 1; }
+
+[ -x "$NIX" ] || die "nix binary not found/executable: $NIX"
+mountpoint -q "$MOUNT" || die "NAS not mounted at $MOUNT — refusing to sync"
+[ -f "$SECRET" ] || die "signing key not found: $SECRET"
+mkdir -p "$CACHE_DIR"
+
+to="file://${CACHE_DIR}?secret-key=${SECRET}&compression=${COMPRESSION}"
+
+if [ "$#" -gt 0 ]; then
+  echo "nix-cache-sync: copying ${#} path(s) -> ${CACHE_DIR}"
+  exec "$NIX" copy --to "$to" "$@"
+else
+  echo "nix-cache-sync: sweeping whole store -> ${CACHE_DIR} (incremental)"
+  exec "$NIX" copy --all --to "$to"
+fi
+#+end_example
+
+Systemd service to refresh cache
+
+#+begin_example
+# nix-from-scratch/systemd/nix-cache-sync.service
+
+# Sync the local (relocated) nix store to the NAS binary cache.
+#
+# Reference unit — NOT auto-installed. See README.md in this directory for
+# manual install. Companion: nix-cache-sync.timer.
+#
+# Captures every currently-valid store path (sources + build outputs) into the
+# NAS cache. Incremental: paths already in the cache are skipped, so it is cheap
+# to run repeatedly.
+
+[Unit]
+Description=Sync nix store to NAS binary cache (source + build-output archive)
+
+[Service]
+Type=oneshot
+# Skip (not fail) the run if the NAS is not mounted.
+ExecCondition=/usr/bin/mountpoint -q /mnt/nas1/share2
+ExecStart=/home/roland/nixroot/bin/nix copy --all --to "file:///mnt/nas1/share2/nix-cache?secret-key=%h/.config/nix/nas1-cache.secret&compression=zstd"
+# Be gentle: this competes with interactive builds for CPU and NFS I/O.
+Nice=10
+IOSchedulingClass=idle
+#+end_example
+
+Plus nightly trigger
+
+#+begin_example
+# nix-from-scratch/systemd/nix-cache-sync.timer
+ 
+# Nightly trigger for nix-cache-sync.service.
+#
+# Reference unit — NOT auto-installed. See README.md for manual install.
+
+[Unit]
+Description=Nightly sync of nix store to NAS binary cache
+
+[Timer]
+OnCalendar=daily
+# If the machine was off at the scheduled time, run once after next boot.
+Persistent=true
+# Avoid a thundering-herd exactly at midnight.
+RandomizedDelaySec=15min
+
+[Install]
+WantedBy=timers.target
+#+end_example
+

@@ -30,6 +30,8 @@
 
 - (Jun 2026) [[file:../articles/2026/06/nxfs-on-ubuntu.org][ptmx setup for nix on ubuntu]]
 
+- (Jun 2026) [[file:../articles/2026/06/nix-binary-cache][nix binary cache]]
+
 * git
 
 - (May 2026) [[file:../articles/2026/05/git-subtree-bugfix.org][bugfix for git subtree]]
