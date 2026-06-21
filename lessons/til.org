@@ -26,6 +26,10 @@
 
 - (Sep 2024) [[file:../articles/2024/09/getting-fonts-from-nix.org][getting fonts from nix]]
 
+* nix
+
+- (jun 2026) [[file:../articles/2026/06/nxfs-on-ubuntu.org][ptmx setup for nix on ubuntu]]
+
 * git
 
 - (May 2026) [[file:../articles/2026/05/git-subtree-bugfix.org][bugfix for git subtree]]

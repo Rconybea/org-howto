@@ -1,0 +1,117 @@
+#+title: [20jun2026] nix-from-scratch on ubuntu
+# ----------------------------------------------------------------
+# +targs: @@nixpkgs $nxfs
+# ----------------------------------------------------------------
+#+description: nix-from-scratch on ubuntu
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: fontconfig nixpkgs nix-env
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* Problem
+
+Nix (compiled from source, see https://github.com/Rconybea/nix-from-scratch) running sandbox builds sometimes fails with
+opaque "could not allocate from pty" error.
+
+Problem only occurs in a build sandbox, i.e. from =nix-build ..=.
+It's not likely to occur while a package is compiling, but occurs from time
+to time when packages run their test suites.
+
+** Investigation I
+
+I had assumed this was a problem with the procedure nix follows to setup
+a build container.
+
+It looks like the origin of the problem is that the nix-build container doesn't
+have permission to operate pseudo-tty devices like =/dev/pts/0=.
+This means within the build sandbox, build cannot perform file-descriptor operations
+like =open=, =dup= on its own stdin/stdout/stderr.
+In particular =openpty= gives =ENOENT= in build sandbox.
+
+Although =openpty= fails, process in build sandbox is started in an environment where
+stdin/stdout/stderr are already granted.
+So the initial process can read =stdin= and write =stdout= just fine.  
+But for example a =Makefile= that uses =echo= to write to console will fail.
+
+** Workaround
+
+For some time I worked around this obstacle.  Since stdout writes to console outside the build container,
+it can't actually be needed for a successful build, so for example can comment out
+=Makefile= echo statements that encounter the bug.
+
+Similarly, can disable =doCheck= for nixpkgs test suite failures when pty problems are the cause.
+
+Pragmatic, but unsatisfactory.
+
+** Investigation II
+
+On ubuntu, it turns out this is a conscious default.
+Ubuntu runs as if fstab contains:
+
+#+begin_example
+devpts /dev/pts devpts rw,nosuid,noexec,relatime,gid=5,mode=620,ptmxmode=000
+#+end_example
+
+In-container this means the created multiplexor =/dev/pts/ptmx= also has no permissions,
+
+The multiplexor exists for the sake of containers: each container gets its own multiplexor
+at =/dev/pts/ptmx= (since kernel ~2.6.29), this allows containers to have an independent
+pty namespace.  The new-mount-namespace multiplexor inherits permissions for =/dev/pts=
+
+Ubuntu ships with =/dev/pts/ptmx= having =0000= permissions on principle of least-privilege.
+
+Ordinary (non-container) processes use =/dev/ptmx=, with =0666= permissions,
+so don't rely on =/dev/pts/ptmx=.
+
+Containers need to use =/dev/pts/ptmx=, and that requires unlocking the feature.
+
+** Solution
+
+Fix is straightforward: we need to do two things:
+
+1. Explicitly put pseudo-tty's in the nix sandbox:
+
+   #+begin_src conf
+   # ~/.config/nix/nix.conf
+
+   extra-sandbox-paths = /dev/pts /dev/ptmx=/dev/pts/ptmx /dev/tty
+   #+end_src
+
+2. Set =ptmxmode=0666= for =/dev/pts=, so fstab now contains:
+
+   #+begin_example
+   devpts /dev/pts devpts gid=5,mode=620,ptmxmode=0666 0 0
+   #+end_example
+
+   We also modified permissions interactively:
+
+   #+begin_example
+   sudo mount -o remount,ptmxmode=0666 /dev/pts
+   #+end_example
+
+** Remarks
+
+Note also that pure nix doesn't want/need pty's for sandbox.
+We opt-in to having pty's at all because some test suites expect them.
+But given we do this, we need properly-setup =/dev/ptmx= and to bind-mound
+the facility.
+
+Presumably nixos already sets itself up this way.
+A regular non-nixos user won't notice absent building a package from source code.

@@ -16,7 +16,13 @@ $ nix-shell shell.nix --run "./bin/howto-publish ~/proj/public_html/org-howto"
 
 Alternatively from emacs using `M-x org-publish-project org-howto`.
 
+## automatic publishing via forgejo
+
+See forgejo runner in `.forgejo/workflows/deploy.yaml`
+The runner generates html into `/var/www/org-howto` on new commits
+
 ## host configuration for publishing
+
 ```
 mkdir -p ~/proj
 mkdir -p ~/proj/public_html
@@ -25,6 +31,7 @@ mkdir -p ~/proj/public_html
 ```
 
 ## interactive emacs configuration
+
 assuming:
 1. contents of this repo is at `~/proj/org-howto`
 2. publishing html to `~/proj/public_html/org-howto`
