@@ -1,0 +1,113 @@
+#+title: [2023] cmake handling of header-only dependencies
+# ----------------------------------------------------------------
+#+tags: @cmake
+# ----------------------------------------------------------------
+#+description: cmake handling of header-only dependencies
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: c++ gcc preprocessor
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* Problem
+
+** Update
+
+My original investigation mistaken.
+It turns out I didn't understand that cmake error from ~target_link_libraries()~:
+
+#+begin_example
+  INTERFACE library can only be used with the INTERFACE keyword of target_link_libraries
+#+end_example
+
+applies to the /depended-on/ library (3rd argument),  not the /depending/ library (1st argument).
+
+** Setup
+
+- NOTE: also asked on stack overflow [[https://stackoverflow.com/questions/77251201/cmake-regular-shared-library-depending-on-a-header-only-interface-library][here]]
+
+- cmake version 3.25.3
+
+- Must introduce a header-only library like this:
+  #+begin_src cmake
+  add_library(foo INTERFACE)
+  #+end_src
+  (instead of ~add_library(foo SHARED)~ or ~add_library(foo STATIC)~)
+
+- Must specify include directories for a header-only library like this:
+  #+begin_src cmake
+    target_include_directories(
+        foo INTERFACE
+        $<INSTALL_INTERFACE:path/to/include>
+        $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/path/to/include>)
+  #+end_src
+
+  cmake enforces this explicitly;   gives error
+  #+begin_example
+  target_include_directories may only set INTERFACE properties on INTERFACE targets
+  #+end_example
+
+- Must specify dependency on a header-only library like this:
+  #+begin_src cmake
+    target_link_libraries(bar INTERFACE foo))
+  #+end_src
+  (instead of ~target_link_libraries(bar PUBLIC foo)~)
+
+  cmake enforces this explicitly;   gives error
+  #+begin_example
+  INTERFACE library can only be used with the INTERFACE keyword of target_link_libraries
+  #+end_example
+
+- Expected behavior:
+  this is sufficient for compilation of ~bar~ to tell compiler about include paths for ~foo~:
+
+  #+begin_example
+  gcc -Ipath/to/foo bar.cpp
+  #+end_example
+
+  This expectation is satisfied for regular non-INTERFACE libraries.
+
+** Problem
+
+- compilation fails to supply include paths for depended-on ~foo~ when compiling depending-on ~bar~,
+  if ~bar~ is a regular library
+
+- predicted cause:
+  1. for an INTERFACE library,   cmake uses property ~INTERFACE_INCLUDE_DIRECTORIES~;
+     it does not populate ~INCLUDE_DIRECTORIES~.
+  2. ~target_link_libraries~ when applied to a ~STATIC~ or ~SHARED~ target,  picks up
+     the ~INCLUDE_DIRECTORIES~ property for the depended-on target,
+     while ignoring the ~INTERFACE_INCLUDE_DIRECTORIES~ property.
+
+** Workaround
+
+- when depending on a header-only library,  explictly incorporate depended-on ~INTERFACE_INCLUDE_DIRECTORIES~
+  to ~INCLUDE_DIRECTORIES~:
+
+  #+begin_src cmake
+    macro(dependency_headeronly target dep)
+        target_link_libraries(${target} INTERFACE ${dep})
+
+        get_target_property(dependency_headeronly__tmp ${dep} INTERFACE_INCLUDE_DIRECTORIES)
+        set_property(
+            TARGET ${target}
+            APPEND PROPERTY INCLUDE_DIRECTORIES ${dependency_headeronly__tmp})
+    endmacro()
+  #+end_src
+
