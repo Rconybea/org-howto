@@ -23,7 +23,7 @@ emacs --batch \
        :auto-preamble t)
       (\"org-howto-static\"
        :base-directory \"${src_dir}\"
-       :base-extension \"css|html|js|svg|ico|png|jpg|gif|pdf\"
+       :base-extension \"css\\\\|html\\\\|js\\\\|svg\\\\|ico\\\\|png\\\\|jpg\\\\|gif\\\\|pdf\"
        :publishing-directory \"${dest_dir}\"
        :recursive t
        :publishing-function org-publish-attachment)))" \
