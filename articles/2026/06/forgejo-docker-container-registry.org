@@ -1,4 +1,4 @@
-#+titel [20jun2026] setting up container registry on forgejo
+#+title [20jun2026] setting up container registry on forgejo
 # ----------------------------------------------------------------
 #+tags: @forgejo @docker @nginx
 # ----------------------------------------------------------------
