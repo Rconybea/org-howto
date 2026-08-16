@@ -1,0 +1,196 @@
+#+titel [20jun2026] setting up container registry on forgejo
+# ----------------------------------------------------------------
+#+tags: @forgejo @docker @nginx
+# ----------------------------------------------------------------
+#+description: Setting up docker container registry on forgejo
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: fontconfig nixpkgs nix-env
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+
+* Problem
+
+I want to setup a forgejo runner using a custom docker container.
+Have done something similar on github; 
+I understand the forgejo works similarly.
+
+See [[../../2026/05/setup-forgejo-at-digital-ocean.org][forgejo-at-digital-ocean]] for initial forgejo setup.
+
+* Container
+
+We have =docker-xo-builder= added to =xo-umbrella2= at =xo-umbrella2/pkgs/docker-xo-builer.nix=.
+
+To establish nix store location:
+
+#+begin_src sh
+  $ cd ~/proj/xo-umbrella2
+  $ nix-build -A xo.docker-xo-builder
+  /home/roland/nixroot/nix/store/3qw6x1vhcry4v1zs18n8hcqab5mwbmjs-docker-xo-builder.tar.gz
+  $ ls -l $(readlink -f result)
+  /home/roland/nixroot/nix/store/3qw6x1vhcry4v1zs18n8hcqab5mwbmjs-docker-xo-builder.tar.gz
+#+end_src
+
+We will be uploading this container to docker, and pushing it to forgejo
+
+* Nginx
+
+** Configure
+
+There's a constraint around how the container registry presents.
+Forgejo insists that this appears at the domain root,
+so containers appear under https://conybeare.us/v2/, not https://conybeare.us/git/v2
+(even though forgejo itself is proxied via nginx from https://conybeare.us/git)
+
+Additional =/etc/nginx/nginx.conf= setup:
+
+#+begin_src conf
+
+  http {
+      ...
+
+      # forgejo
+  	location /git/ { ... }  # existing
+
+      # forgejo container registry
+  	location /v2 {
+  	    client_max_body_size 0;
+  		proxy_request_buffering off;
+  		proxy_pass https://127.0.0.1:3000;
+  		proxy_set_header Host $host
+  		proxy_set_header X-Real-IP $remote_addr;
+  		proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+  		proxy_set_header X-Forwarded-Proto $scheme;
+  	}
+  }
+
+#+end_src
+
+Omitting the trailing slash in =location /v2= causes =/v2/...=
+to reach forgejo unaltered. This works because forgejo mounts its container-registry
+at =/v2= instead of at =/git/v2=.
+ 
+** Test
+
+Ask =nginx= to verify configuration:
+
+#+begin_src sh
+  sudo bash
+  nix run /etc/nginx/nix@nginx -- -t
+#+end_src
+
+Then restart:
+
+#+begin_src sh
+  sudo systemctl reload nginx
+#+end_src
+
+Verify routing
+
+#+begin_src sh
+  $ curl -i https://conybeare.us/v2
+  HTTP/2 401 
+  server: nginx/1.30.1
+  date: Sun, 21 Jun 2026 22:47:31 GMT
+  content-type: application/json
+  content-length: 50
+  docker-distribution-api-version: registry/2.0
+  www-authenticate: Bearer realm="https://conybeare.us/git/v2/token",service="container_registry",scope="*"
+
+  {"errors":[{"code":"UNAUTHORIZED","message":""}]}
+#+end_src
+
+Here:
+- HTTP/2 401 :: "who are you?"
+- docker-distribution-api-version :: *forgejo* is answering, and it's at the root
+- https://conybeare.us/git/v2/token :: tells docker where to fetch a token. Now under git
+
+
+* Forgejo
+
+Create token (visit https://conybeare.us/git | Settings | Applications | Generate Token).
+We need the token to have =write:package= permission
+
+We need to give that token to docker:
+
+* Docker (roly-chicago-24)
+
+(on =roly-chicago-24=, not =vpn1=):
+
+#+begin_src sh
+  $ docker login conybeare.us -u roland
+  Password: <token per forgejo above>
+
+  WARNING! Your credentials are stored unencrypted in '/home/roland/.docker/config.json'.
+  Configure a credential helper to remove this warning. See
+  https://docs.docker.com/go/credential-store/
+
+  Login Succeeded
+  $
+#+end_src
+
+Next add the =docker-xo-builder= image
+
+#+begin_src sh
+  # roly-chicago-24
+
+  $ cd ~/proj/xo-umbrella2
+  $ docker load < $(readlink -f result)
+  $ docker tag docker-xo-builder:v1 conybeare.us/roland/docker-xo-builder:v1
+  $ docker push conybeare.us/roland/docker-xo-builder:v1
+#+end_src
+
+The last step runs for a while, it has ~331MB of layers to upload.
+
+Once this is done, we can see uploaded package here: https://conybeare.us/git/roland/-/packages
+
+* Docker (vpn1)
+
+We want docker on =vpn1= itself
+
+#+begin_src sh
+  # vpn1
+  $ sudo apt-get install docker.io
+  ...
+#+end_src
+
+We also need to add the =forgejo-runner= account to the =docker= group
+
+#+begin_src sh
+  # vpn1
+  $ sudo usermod -aG docker forgejo-runner
+  $ sudo systemctl restart forgejo-runner
+#+end_src
+
+The updated forgejo-runner can open =docker.sock= to spawn job containers,
+but we need to give it a label for our new image:
+
+#+begin_src yaml
+  # /etc/forgejo-runner/config.yaml
+  runner:
+    labels:
+      - "host:host"
+      - "xo-builder:docker://conybeare.us/roland/docker-xo-builder:v1"
+#+end_src
+
+and restart
+
+#+begin_src sh
+  $ sudo systemctl restart forgejo-runner
+#+end_src

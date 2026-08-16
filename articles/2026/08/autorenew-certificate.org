@@ -1,0 +1,115 @@
+#+title [16aug2026] setup autorenewing certificate on cloud host
+# ----------------------------------------------------------------
+#+tags: @forgejo @certbot @nixpkgs
+# ----------------------------------------------------------------
+# +description: Setting up auto-renewing certificate for on a cloud host
+#
+# org-publish options
+#
+# ^:{}  require a_{b} before assuming that b should be subscripted.
+#       without this option a_b will automatically subscript b.
+#+options: ^:{}
+#
+# emacs-specific options
+#+startup: showall
+#
+# html exporter options
+#+language: en
+#+keywords: fontconfig nixpkgs nix-env
+#+setupfile: ../../../ext/fniessen/theme-readtheorg.setup
+#
+#+html_head: <link rel="shortcut icon" type="image/x-icon" href="/web/img/favicon.ico" />
+#+html_link_home: ../../../index.html
+#
+# not using: prefer theme-readtheorg
+# +infojs_opt: view:showall mouse:#ffc0c0 toc:nil ltoc:nil path:/web/ext/orginfo/org-info.js
+# +html_head: <link rel="stylesheet" type="text/css" href="/web/css/primary.css" />
+#
+
+* Problem
+
+Self-signed certificate expired on my cloud host =vpn1=.
+
+* Plan
+
+Setup =systemd= services to renew certificate automagically.
+We are using =nix= to provide the services themselves.
+
+** Renew Certificate
+
+To renew certificate immediately:
+
+#+begin_src sh
+  $ ssh vpn1
+  sudo /nix/var/nix/profiles/default/bin/nix run nixpkgs#certbot -- renew \
+  	 --pre-=hook 'systemctl stop nginx' \
+  	 --post-hook 'systemctl start nginx'
+#+end_src
+
+** Certbot Renewal Service
+
+=${certbot}= is store path to the certificate bot.
+
+#+begin_example
+    # /etc/systemd/system/certbot-renew.service
+
+    [Unit]
+    Description=Renew Let's Encrypt certificates (fleet-managed)
+    After=network-online.target
+    Wants=network-online.target
+
+    [Service]
+    Type=oneshot
+    ExecStart=${certbot}/bin/certbot renew --non-interactive \
+        --pre-hook  '/usr/bin/systemctl stop nginx' \
+        --post-hook '/usr/bin/systemctl start nginx'
+
+    # Safety net: if certbot dies between hooks,
+    # nginx stays down and takes forgejo and CI with it until a human notices
+    #
+    ExecStopPost=-/usr/bin/systemctl --no-block start nginx
+#+end_example
+
+** Renewal Timer
+
+Timer to check certificate and autorenew
+
+#+begin_example
+    # /etc/systemd/system/certbot-renew.timer
+
+    [Unit]
+    Description=Twice-daily Let's Encrypt renewal check (fleet-managed)
+
+    [Timer]
+    OnCalendar=*-*-* 03,15:00:00
+    RandomizedDelaySec=1h
+    Persistent=true
+
+    [Install]
+    WantedBy=timers.target
+#+end_example
+
+** Renew Certificate
+
+After establishing new =/etc/systemd= content:
+
+#+begin_src sh
+
+  $ ssh vpn1
+  $ sudo systemctl daemon-reload
+  $ sudo systemctl enable --now certbot-renew.timer
+
+#+end_src
+
+** Verify
+
+#+begin_src sh
+  $ ssh vpn1
+  sudo systemctl --no-pager --full status nginx \ head -n 6
+  sudo systemctl --no-pager list-timers certbot-renew.timer
+#+end_src
+
+Can also browse:
+- https://conybeare.us nginx default landing page at present
+- https://conybeare.us/git forgejo git hosting
+

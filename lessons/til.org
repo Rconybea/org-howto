@@ -23,13 +23,11 @@
 * wsl (windows services for linux)
 
 - (Nov? 2023) [[file:../articles/2023/11/x11-apps-wedged-after-wsl-update.org][x11 apps wedged after wsl update]]
-
 - (Sep 2024) [[file:../articles/2024/09/getting-fonts-from-nix.org][getting fonts from nix]]
 
 * nix
 
 - (Jun 2026) [[file:../articles/2026/06/nxfs-on-ubuntu.org][ptmx setup for nix on ubuntu]]
-
 - (Jun 2026) [[file:../articles/2026/06/nix-binary-cache][nix binary cache]]
 
 * git
@@ -39,7 +37,9 @@
 * webhosting + forgejo + CI
 
 - (May 2026) [[file:../articles/2026/05/setup-forgejo-at-digital-ocean.org][forgejo setup]]
-- (May 2026) [[file:../articles/2026/05/setup-forgejo-runner.org][forgejo runner setup)]]
+- (May 2026) [[file:../articles/2026/05/setup-forgejo-runner.org][forgejo runner setup]]
+- (Jun 2026) [[file:../articles/2026/06/forgejo-docker-container-registry.org][forgejo docker container registry]]
+- (Aug 2026) [[file:../articles/2026/08/autorenew-certificate.org][automatic certificate renewal]]
 
 - (Jun 2026) [[file:../articles/2026/06/setup-org2html-pipeline.org][self-hosted org-howto publishing]]
 
