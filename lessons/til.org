@@ -22,8 +22,8 @@
 
 * wsl (windows services for linux)
 
-- (Nov? 2023) [[file:../articles/2023/11/x11-apps-wedged-after-wsl-update.org][x11 apps wedged after wsl update]]
 - (Sep 2024) [[file:../articles/2024/09/getting-fonts-from-nix.org][getting fonts from nix]]
+- (Nov? 2023) [[file:../articles/2023/11/x11-apps-wedged-after-wsl-update.org][x11 apps wedged after wsl update]]
 
 * nix
 
@@ -36,97 +36,17 @@
 
 * webhosting + forgejo + CI
 
-- (May 2026) [[file:../articles/2026/05/setup-forgejo-at-digital-ocean.org][forgejo setup]]
-- (May 2026) [[file:../articles/2026/05/setup-forgejo-runner.org][forgejo runner setup]]
-- (Jun 2026) [[file:../articles/2026/06/forgejo-docker-container-registry.org][forgejo docker container registry]]
 - (Aug 2026) [[file:../articles/2026/08/autorenew-certificate.org][automatic certificate renewal]]
-
+- (Jun 2026) [[file:../articles/2026/06/forgejo-docker-container-registry.org][forgejo docker container registry]]
 - (Jun 2026) [[file:../articles/2026/06/setup-org2html-pipeline.org][self-hosted org-howto publishing]]
+- (May 2026) [[file:../articles/2026/05/setup-forgejo-runner.org][forgejo runner setup]]
+- (May 2026) [[file:../articles/2026/05/setup-forgejo-at-digital-ocean.org][forgejo setup]]
 
 * cmake
 
+- (Oct 2023) [[file:../articles/2023/10/nix-calling-cmake.org][transitive library dependencies]]
 - (Oct 2023) [[file:../articles/2023/10/inconsistent-eigen-package.org][inconsistent eigen package]]
-
 - (Oct 2023) [[file:../articles/2023/10/cmake-headeronly-dependencies.org][cmake handling of header-only dependencies]]
-
-** pybind11 link difficulties with transitive library dependencies (7oct2023)
-
-*** Setup
-
-- cmake version 3.25.3
-- pybind11 version ???
-- nix build (see https://github.com:rconybea/xo-nix2)
-  Consequences of nix build:
-  - Each package installed to a separate directory -- no "common swimming pool" like =/usr/lib=
-  - Implies install directory always distinct from any directory containing build inputs
-  - Tends to reveal oversights in toolchain,  as we'll see below
-
-- pybind library (=xo-pyreflect=) with dependency on a separate library (=xo-reflect=),
-  that in turn has secondary dependencies (=xo-refcnt=, =xo-indentlog=).
-  Note that =xo-indentlog= is header-only.
-
-- Expect this cmake script to work:
-  #+begin_src cmake
-    find_package(pybind11)
-    pybind11_add_module(pyreflect pyreflect.cpp)
-
-    find_package(reflect CONFIG REQUIRED)
-    target_link_libraries(pyreflect PUBLIC reflect)
-  #+end_src
-
-*** Problem
-
-- Instead, link fails.   Link line something like:
-  #+begin_example
-  g++ -fPIC ... -o pyreflect.cpython-311-x86_64-linux-gnu.so /path/to/libreflect.so -lrefcnt -lindentlog
-  #+end_example
-
-  Two problems here:
-  1. directory containing =librefcnt.so= isn't on the link line (no =-L/path/to/refcnt/dir= for example).
-  2. =libindentlog.so= does not exist,  since =indentlog= is header-only
-
-- Looked into intermediate outputs like =lib/cmake/reflectTargets.cmake=,  excerpt:
-  #+begin_src cmake
-      set_target_properties(reflect PROPERTIES
-          INTERFACE_INCLUDE_DIRECTORIES "${_IMPORT_PREFIX}/include"
-          INTERFACE_LINK_LIBRARIES "indentlog;refcnt"
-      )
-  #+end_src
-  It's not obvious how =xo_pyreflect= can know that =indentlog= is header-only,  while =refcnt= isn't
-  (though could presumably extract the relevant libdir from =find_package()= with some work).
-
-*** Workaround
-
-- Recognize that =pyreflect= link shouldn't need =refcnt= on the link line,
-  since =libreflect.so= has a =DT_NEEDED= entry for it.
-
-  #+begin_example
-  $ readelf -d /path/to/libreflect.so
-
-  Dynamic section at offset 0x17860 contains 34 entries:
-    Tag        Type                         Name/Value
-   0x0000000000000001 (NEEDED)             Shared library: [librefcnt.so.1]
-  ...
-  #+end_example
-
-- When building =pyreflect=,  suppress transitive dependencies
-  For example:
-
-  #+begin_src cmake
-    # xo_cxx.cmake
-    macro(xo_pybind11_dependency target dep)
-        find_package(${dep} CONFIG REQUIRED)
-        set_property(TARGET ${dep} PROPERTY INTERFACE_LINK_LIBRARIES "")
-        target_link_libraries(${target} PUBLIC ${dep})
-    endmacro()
-  #+end_src
-
-  Then in =.cmake= for =pyreflect=,  something equivalent to:
-
-  #+begin_src cmake
-    pybind11_add_module(pyreflect pyreflect.cpp)
-    xo_pybind11_dependency(pyreflect reflect)
-  #+end_src
 
 * lsp (language server process)
 
