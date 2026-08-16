@@ -1,13 +1,40 @@
 # -*- mode: org; -*-
+#
+# readtheorg theme (Fabrice Niessen), served from THIS repo rather than from
+# fniessen.github.io.
+#
+# Upstream restructured on 2026-08-12: src/readtheorg_theme/ -> src/readtheorg/, and
+# src/lib/js/ -> src/vendor/<pkg>/. Every asset referenced here 404'd, so the site
+# rendered as unstyled content -- on conybeare.us/web and on github.io alike, since
+# both build from this one file. Assets now live under ext/fniessen/, so an upstream
+# rename cannot break the published site again.
+#
+# To refresh them, see ext/fniessen/README.md.
+#
+# Paths are root-relative (/web/...) rather than ../-relative: pages sit at varying
+# depths (index.org at the root, articles/YYYY/MM/*.org three levels down), and both
+# deployments serve this tree under /web. That matches the convention already used by
+# /web/css/notebook.css and /web/img/favicon.ico.
 
 #+OPTIONS: html-style:nil
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/htmlize.css"/>
-#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/css/readtheorg.css"/>
 
-#+HTML_HEAD: <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.3/jquery.min.js"></script>
-#+HTML_HEAD: <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
-#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/src/lib/js/jquery.stickytableheaders.min.js"></script>
-#+HTML_HEAD: <script type="text/javascript" src="https://fniessen.github.io/org-html-themes/src/readtheorg_theme/js/readtheorg.js"></script>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/web/ext/fniessen/readtheorg/css/htmlize.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/web/ext/fniessen/readtheorg/css/readtheorg.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/web/ext/fniessen/readtheorg/css/code-copy.css"/>
+#+HTML_HEAD: <link rel="stylesheet" type="text/css" href="/web/ext/fniessen/readtheorg/css/search.css"/>
+
+#+HTML_HEAD: <script type="text/javascript" src="/web/ext/fniessen/vendor/jquery/jquery.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="/web/ext/fniessen/vendor/bootstrap/bootstrap.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="/web/ext/fniessen/vendor/stickytableheaders/jquery.stickytableheaders.min.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="/web/ext/fniessen/readtheorg/js/search.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="/web/ext/fniessen/readtheorg/js/readtheorg.js"></script>
+#+HTML_HEAD: <script type="text/javascript" src="/web/ext/fniessen/readtheorg/js/code-copy.js"></script>
+
+# Code blocks get copy buttons automatically (code-copy.js self-activates).
+# Search is opt-in per page -- put {{{enable-search}}} in a document to turn it on.
+#+MACRO: enable-search #+HTML_HEAD: <script type="text/javascript">enableSearch();</script>
+#+MACRO: disable-search #+HTML_HEAD: <script type="text/javascript">disableSearch();</script>
+#+MACRO: set-search-limit #+HTML_HEAD: <script type="text/javascript">setSearchLimit($1);</script>
 
 # set background color for clode blocks
 #+html_head: <style>pre.src{background:#343131;color:white;} </style>
