@@ -50,7 +50,7 @@ To renew certificate immediately:
 
 =${certbot}= is store path to the certificate bot.
 
-#+begin_example
+#+begin_src conf-unix
     # /etc/systemd/system/certbot-renew.service
 
     [Unit]
@@ -68,13 +68,13 @@ To renew certificate immediately:
     # nginx stays down and takes forgejo and CI with it until a human notices
     #
     ExecStopPost=-/usr/bin/systemctl --no-block start nginx
-#+end_example
+#+end_src
 
 ** Renewal Timer
 
 Timer to check certificate and autorenew
 
-#+begin_example
+#+begin_src conf-unix
     # /etc/systemd/system/certbot-renew.timer
 
     [Unit]
@@ -87,7 +87,7 @@ Timer to check certificate and autorenew
 
     [Install]
     WantedBy=timers.target
-#+end_example
+#+end_src
 
 ** Renew Certificate
 
